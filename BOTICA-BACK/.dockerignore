@@ -1,0 +1,13 @@
+.git
+.gitattributes
+.gitignore
+.idea
+.vscode
+.mvn
+target
+*.log
+mvnw
+mvnw.cmd
+backup_botica.sql
+docker-compose*.yml
+docker-compose*.yaml

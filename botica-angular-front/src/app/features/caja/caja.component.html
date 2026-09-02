@@ -1,0 +1,78 @@
+<div class="caja-container">
+    <h2>Gestión de Caja</h2>
+    <p class="subtitle">Apertura y cierre de turnos</p>
+
+    @if (mensajeError()) {
+    <div class="alert error">{{ mensajeError() }}</div>
+    }
+
+    @if (isLoading()) {
+    <div class="loader">Cargando estado de la caja...</div>
+    } @else {
+
+    <!-- SI NO HAY CAJA ACTIVA: MOSTRAR APERTURA -->
+    @if (!cajaActiva()) {
+    <div class="card card-apertura">
+        <h3>Abrir Nueva Caja</h3>
+        <p>Ingresa el monto base en efectivo con el que inicias el turno.</p>
+
+        <form [formGroup]="formApertura" (ngSubmit)="abrirCaja()">
+            <div class="form-group">
+                <label>Monto Inicial (S/.)</label>
+                <input type="number" formControlName="montoInicial" step="0.10">
+                @if (formApertura.controls['montoInicial'].invalid && formApertura.controls['montoInicial'].touched) {
+                <small class="error-text">El monto no puede ser negativo ni vacío.</small>
+                }
+            </div>
+            <button type="submit" class="btn-primary" [disabled]="formApertura.invalid">Abrir Caja</button>
+        </form>
+    </div>
+    }
+
+    <!-- SI HAY CAJA ACTIVA: MOSTRAR CIERRE -->
+    @else {
+    <div class="card card-activa">
+        <div class="estado-header">
+            <h3>Caja Abierta</h3>
+            <span class="badge status-open">Activa</span>
+        </div>
+
+        <div class="info-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+            <div class="info-item">
+                <label>Aperturada el:</label>
+                <div><strong>{{ cajaActiva()?.fechaApertura | date:'dd/MM/yyyy HH:mm' }}</strong></div>
+            </div>
+            <div class="info-item">
+                <label>Monto Inicial:</label>
+                <div><strong>S/. {{ cajaActiva()?.montoInicial }}</strong></div>
+            </div>
+            <div class="info-item">
+                <label style="color: #10b981;">Total Ingresos (Ventas/Otros):</label>
+                <div style="color: #10b981;"><strong>S/. {{ cajaActiva()?.totalIngresos || '0.00' }}</strong></div>
+            </div>
+            <div class="info-item">
+                <label style="color: #ef4444;">Total Egresos (Movs):</label>
+                <div style="color: #ef4444;"><strong>S/. {{ cajaActiva()?.totalEgresos || '0.00' }}</strong></div>
+            </div>
+        </div>
+
+        <div style="background: rgba(0,0,0,0.1); padding: 1rem; border-radius: 8px; margin: 1.5rem 0; text-align: center; border: 1px dashed var(--border-color);">
+            <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Saldo Estimado en Caja (Efectivo y Otros)</div>
+            <div style="font-size: 1.8rem; color: #3b82f6; font-weight: bold;">S/. {{ cajaActiva()?.saldoCalculado || '0.00' }}</div>
+        </div>
+
+        <hr>
+
+        <h4>Cerrar Turno</h4>
+        <form [formGroup]="formCierre" (ngSubmit)="cerrarCaja()">
+            <div class="form-group">
+                <label>Monto Final en Efectivo (S/.)</label>
+                <input type="number" formControlName="montoFinal" step="0.10">
+            </div>
+            <button type="submit" class="btn-danger" [disabled]="formCierre.invalid">Cerrar Caja
+                Definitivamente</button>
+        </form>
+    </div>
+    }
+    }
+</div>

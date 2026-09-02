@@ -1,0 +1,98 @@
+<div class="compras-container">
+    <h2>Ingreso de Mercadería (Lotes)</h2>
+    <p class="subtitle">Registra nuevas compras para actualizar el stock</p>
+
+    <div class="layout-grid">
+
+        <!-- PASO 1: SELECCIONAR PRODUCTO -->
+        <div class="card search-card">
+            <h3>1. Buscar Producto</h3>
+
+            <div class="search-box">
+                <input type="text" [formControl]="searchControl" placeholder="Buscar producto por nombre..."
+                    (keyup.enter)="buscarProducto()">
+                <button type="button" (click)="buscarProducto()">Buscar</button>
+            </div>
+
+            @if (productosEncontrados().length > 0) {
+            <ul class="results-list">
+                @for (prod of productosEncontrados(); track prod.idProducto) {
+                <li (click)="seleccionarProducto(prod)">
+                    <span>{{ prod.nombre }}</span>
+                    <span class="badge-stock">Stock actual: {{ prod.stockActual }}</span>
+                </li>
+                }
+            </ul>
+            }
+
+            @if (productoSeleccionado()) {
+            <div class="selected-product">
+                <h4>Producto a ingresar:</h4>
+                <p class="highlight">{{ productoSeleccionado()?.nombre }}</p>
+                <button class="btn-clear-prod" (click)="productoSeleccionado.set(null)">Cambiar Producto</button>
+            </div>
+            }
+        </div>
+
+        <!-- PASO 2: DATOS DEL LOTE Y COMPRA -->
+        <div class="card form-card">
+            <h3>2. Datos del Ingreso</h3>
+
+            <form [formGroup]="compraForm" (ngSubmit)="registrarIngreso()">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Proveedor</label>
+                        <select formControlName="proveedorId">
+                            <option value="0" disabled>Seleccione un proveedor...</option>
+                            @for (prov of proveedores(); track prov.idProveedor) {
+                            <option [value]="prov.idProveedor">{{ prov.razonSocial }} ({{ prov.ruc }})</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row split">
+                    <div class="form-group">
+                        <label>Código de Lote</label>
+                        <input type="text" formControlName="codigoLote" placeholder="Ej. L-202611">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Fecha de Vencimiento</label>
+                        <input type="date" formControlName="fechaVencimiento">
+                    </div>
+                </div>
+
+                <div class="form-row split">
+                    <div class="form-group" *ngIf="productoSeleccionado()?.unidadesPorPresentacion! > 1">
+                        <label>Paquetes Completos (Cajas/Docenas)</label>
+                        <input type="number" formControlName="cajas">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Unidades Sueltas</label>
+                        <input type="number" formControlName="unidadesSueltas">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Precio Unitario Compra (S/.)</label>
+                        <input type="number" step="0.01" formControlName="precioUnitario">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Motivo</label>
+                    <input type="text" formControlName="motivo">
+                </div>
+
+                <button type="submit" class="btn-primary"
+                    [disabled]="compraForm.invalid || !productoSeleccionado() || isSubmitting()">
+                    {{ isSubmitting() ? 'Guardando...' : '💾 Registrar Ingreso a Almacén' }}
+                </button>
+
+            </form>
+        </div>
+
+    </div>
+</div>

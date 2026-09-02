@@ -1,0 +1,769 @@
+<div class="pos-page">
+
+    <!-- ================================================= -->
+    <!-- CABECERA -->
+    <!-- ================================================= -->
+
+    <header class="page-header">
+
+        <div>
+
+            <div class="page-eyebrow">
+                OPERACIONES
+            </div>
+
+            <h1>
+                Punto de Venta
+            </h1>
+
+            <p>
+                Registra ventas de manera rápida y segura.
+            </p>
+
+        </div>
+
+
+        <div class="header-status">
+
+            <span class="status-dot"></span>
+
+            <div>
+                <strong>
+                    POS activo
+                </strong>
+
+                <small>
+                    Sistema operativo
+                </small>
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <!-- ================================================= -->
+    <!-- CONTENIDO PRINCIPAL -->
+    <!-- ================================================= -->
+
+    <div class="pos-grid">
+
+
+        <!-- ================================================= -->
+        <!-- CATÁLOGO -->
+        <!-- ================================================= -->
+
+        <section class="catalog-card">
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2>
+                        Catálogo de productos
+                    </h2>
+
+                    <span>
+                        Busca medicamentos y artículos disponibles.
+                    </span>
+
+                </div>
+
+                @if (carrito().length > 0) {
+
+                <div class="cart-counter">
+
+                    <span>🛒</span>
+
+                    {{ cantidadProductos() }}
+
+                </div>
+
+                }
+
+            </div>
+
+
+            <!-- BUSCADOR -->
+
+            <form class="search-box" [formGroup]="searchForm" (ngSubmit)="buscarProducto()">
+
+                <span class="search-icon">
+                    🔎
+                </span>
+
+                <input type="text" formControlName="termino" placeholder="Buscar por nombre o código..."
+                    autocomplete="off" (input)="buscarProducto()" />
+
+
+                @if (buscandoProducto()) {
+
+                <span class="search-spinner"></span>
+
+                }
+
+
+                @if (
+                searchForm.controls.termino.value
+                ) {
+
+                <button type="button" class="clear-search" (click)="limpiarBusqueda()">
+                    ×
+                </button>
+
+                }
+
+            </form>
+
+
+            <!-- ================================================= -->
+            <!-- RESULTADOS -->
+            <!-- ================================================= -->
+
+            <div class="catalog-content">
+
+
+                @if (
+                buscandoProducto()
+                ) {
+
+                <div class="catalog-loading">
+
+                    <span class="loading-spinner"></span>
+
+                    <p>
+                        Buscando productos...
+                    </p>
+
+                </div>
+
+                }
+
+
+                @else if (
+                resultadosBusqueda().length > 0
+                ) {
+
+                <div class="results-label">
+
+                    <span>
+                        RESULTADOS
+                    </span>
+
+                    <small>
+                        {{ resultadosBusqueda().length }}
+                        encontrados
+                    </small>
+
+                </div>
+
+
+                <div class="product-grid">
+
+                    @for (
+                    producto of resultadosBusqueda();
+                    track producto.idProducto
+                    ) {
+
+                    <article class="product-card" [class.in-cart]="
+                  estaEnCarrito(
+                    producto.idProducto
+                  )
+                " (click)="agregarAlCarrito(producto)">
+
+                        <!-- ICONO -->
+
+                        <div class="product-icon">
+                            💊
+                        </div>
+
+
+                        <!-- STOCK -->
+
+                        @if (
+                        producto.stockActual <= producto.stockMinimo ) { <span class="stock-badge warning">
+                            Poco stock
+                            </span>
+
+                            } @else {
+
+                            <span class="stock-badge available">
+                                Disponible
+                            </span>
+
+                            }
+
+
+                            <div class="product-info">
+
+                                <span class="product-code">
+                                    Código #{{ producto.idProducto }}
+                                </span>
+
+                                <h3>
+                                    {{ producto.nombre }}
+                                </h3>
+
+                                @if (producto.descripcion) {
+
+                                <p>
+                                    {{ producto.descripcion }}
+                                </p>
+
+                                }
+
+                            </div>
+
+
+                            <div class="product-footer">
+
+                                <div>
+
+                                    <span class="price-label">
+                                        Precio
+                                    </span>
+
+                                    <strong class="product-price">
+                                        {{ producto.precioVenta | currency:'PEN':'S/ ' }}
+                                    </strong>
+                                    
+                                    @if (producto.unidadesPorPresentacion && producto.unidadesPorPresentacion > 1 && producto.precioPresentacion) {
+                                      <br><small style="color:#666;">Doc/Caja: {{ producto.precioPresentacion | currency:'PEN':'S/ ' }}</small>
+                                    }
+
+                                </div>
+
+
+                                <div class="product-stock">
+
+                                    <span>
+                                        Stock
+                                    </span>
+
+                                    <strong>
+                                        {{ producto.stockActual }}
+                                    </strong>
+
+                                </div>
+                                
+                                @if (producto.unidadesPorPresentacion && producto.unidadesPorPresentacion > 1 && producto.precioPresentacion) {
+                                  <button type="button" class="add-product" style="margin-top: 5px; background: #e0f2f1; color: #00796b;" (click)="
+                                    $event.stopPropagation();
+                                    agregarPaqueteAlCarrito(producto)
+                                  ">
+                                    + Pqte ({{producto.unidadesPorPresentacion}})
+                                  </button>
+                                }
+
+                            </div>
+
+
+                            <button type="button" class="add-product" (click)="
+                    $event.stopPropagation();
+                    agregarAlCarrito(producto)
+                  ">
+
+                                @if (
+                                estaEnCarrito(
+                                producto.idProducto
+                                )
+                                ) {
+
+                                <span>
+                                    ✓
+                                    {{ cantidadEnCarrito(producto.idProducto) }}
+                                </span>
+
+                                } @else {
+
+                                <span>
+                                    + Agregar
+                                </span>
+
+                                }
+
+                            </button>
+
+                    </article>
+
+                    }
+
+                </div>
+
+                }
+
+
+                @else if (
+                terminoBusqueda().length >= 2
+                ) {
+
+                <div class="empty-state">
+
+                    <div class="empty-icon">
+                        🔎
+                    </div>
+
+                    <h3>
+                        No encontramos productos
+                    </h3>
+
+                    <p>
+                        Prueba con otro nombre,
+                        código o término de búsqueda.
+                    </p>
+
+                </div>
+
+                }
+
+
+                @else {
+
+                <div class="initial-state">
+
+                    <div class="initial-icon">
+                        💊
+                    </div>
+
+                    <h3>
+                        Busca un producto para comenzar
+                    </h3>
+
+                    <p>
+                        Escribe al menos dos caracteres
+                        para consultar el catálogo.
+                    </p>
+
+                </div>
+
+                }
+
+            </div>
+
+        </section>
+
+
+        <!-- ================================================= -->
+        <!-- CARRITO -->
+        <!-- ================================================= -->
+
+        <aside class="sale-card">
+
+
+            <!-- CABECERA -->
+
+            <div class="sale-header">
+
+                <div>
+
+                    <span class="sale-eyebrow">
+                        NUEVA VENTA
+                    </span>
+
+                    <h2>
+                        Venta actual
+                    </h2>
+
+                </div>
+
+
+                @if (
+                carrito().length > 0
+                ) {
+
+                <span class="items-count">
+                    {{ cantidadProductos() }}
+                    {{ cantidadProductos() === 1 ? 'producto' : 'productos' }}
+                </span>
+
+                }
+
+            </div>
+
+
+            <!-- ================================================= -->
+            <!-- CLIENTE -->
+            <!-- ================================================= -->
+
+            <div class="client-section">
+
+                <div class="section-title">
+
+                    <span class="section-icon">
+                        👤
+                    </span>
+
+                    <div>
+
+                        <strong>
+                            Cliente
+                        </strong>
+
+                        <small>
+                            Opcional para la venta
+                        </small>
+
+                    </div>
+
+                </div>
+
+
+                @if (
+                !clienteSeleccionado()
+                ) {
+
+                <form class="client-search" [formGroup]="clienteForm" (ngSubmit)="buscarCliente()">
+
+                    <input type="text" formControlName="documento" placeholder="DNI o RUC" maxlength="11" />
+
+                    <button type="submit" [disabled]="
+                buscandoCliente()
+              ">
+
+                        @if (
+                        buscandoCliente()
+                        ) {
+
+                        <span class="mini-spinner"></span>
+
+                        } @else {
+
+                        Buscar
+
+                        }
+
+                    </button>
+
+                </form>
+
+
+                <small class="client-hint">
+                    Si no registras un cliente,
+                    se utilizará "Cliente Varios".
+                </small>
+
+                }
+
+
+                @if (
+                clienteSeleccionado()
+                ) {
+
+                <div class="selected-client">
+
+                    <div class="client-avatar">
+                        {{ clienteSeleccionado()?.nombreRazonSocial?.charAt(0) }}
+                    </div>
+
+                    <div class="client-data">
+
+                        <strong>
+                            {{ clienteSeleccionado()?.nombreRazonSocial }}
+                        </strong>
+
+                        <span>
+                            {{ clienteSeleccionado()?.tipoDocumento }}
+                            :
+                            {{ clienteSeleccionado()?.numeroDocumento }}
+                        </span>
+
+                    </div>
+
+                    <button type="button" class="remove-client" (click)="quitarCliente()" title="Quitar cliente">
+                        ×
+                    </button>
+
+                </div>
+
+                }
+
+            </div>
+
+
+            <!-- ================================================= -->
+            <!-- CARRITO -->
+            <!-- ================================================= -->
+
+            <div class="cart-section">
+
+                <div class="section-title">
+
+                    <span class="section-icon">
+                        🛒
+                    </span>
+
+                    <div>
+
+                        <strong>
+                            Productos
+                        </strong>
+
+                        <small>
+                            Detalle de la venta
+                        </small>
+
+                    </div>
+
+                </div>
+
+
+                @if (
+                carrito().length === 0
+                ) {
+
+                <div class="cart-empty">
+
+                    <div class="cart-empty-icon">
+                        🛒
+                    </div>
+
+                    <strong>
+                        Tu carrito está vacío
+                    </strong>
+
+                    <p>
+                        Selecciona productos del catálogo
+                        para agregarlos a la venta.
+                    </p>
+
+                </div>
+
+                }
+
+
+                @else {
+
+                <div class="cart-items">
+
+                    @for (
+                    item of carrito();
+                    track item.producto.idProducto
+                    ) {
+
+                    <div class="cart-item">
+
+                        <div class="cart-product-icon">
+                            💊
+                        </div>
+
+
+                        <div class="cart-product">
+
+                            <strong>
+                                {{ item.producto.nombre }}
+                            </strong>
+
+                            <span>
+                                {{ item.producto.precioVenta | currency:'PEN':'S/ ' }}
+                                por unidad
+                            </span>
+
+                        </div>
+
+
+                        <div class="quantity-control">
+
+                            <button type="button" (click)="
+                      disminuirCantidad(item)
+                    " [disabled]="
+                      isProcessing()
+                    ">
+                                −
+                            </button>
+
+                            <span>
+                                {{ item.cantidad }}
+                            </span>
+
+                            <button type="button" (click)="
+                      aumentarCantidad(item)
+                    " [disabled]="
+                      isProcessing() ||
+                      item.cantidad >=
+                      item.producto.stockActual
+                    ">
+                                +
+                            </button>
+
+                        </div>
+
+
+                        <strong class="item-total">
+
+                            {{
+                            getItemTotal(item)
+                            | currency:'PEN':'S/ '
+                            }}
+
+                        </strong>
+
+
+                        <button type="button" class="remove-item" (click)="
+                    removerDelCarrito(
+                      item.producto.idProducto
+                    )
+                  " [disabled]="
+                    isProcessing()
+                  " title="Eliminar producto">
+                            ×
+                        </button>
+
+                    </div>
+
+                    }
+
+                </div>
+
+                }
+
+            </div>
+
+
+            <!-- ================================================= -->
+            <!-- RESUMEN -->
+            <!-- ================================================= -->
+
+            <div class="sale-summary">
+
+                <div class="summary-row">
+
+                    <span>
+                        Subtotal
+                    </span>
+
+                    <strong>
+                        {{
+                        subtotalVenta()
+                        | currency:'PEN':'S/ '
+                        }}
+                    </strong>
+
+                </div>
+
+
+                <div class="summary-row">
+
+                    <span>
+                        IGV (18%)
+                    </span>
+
+                    <strong>
+                        {{
+                        igvVenta()
+                        | currency:'PEN':'S/ '
+                        }}
+                    </strong>
+
+                </div>
+
+
+                <div class="summary-divider"></div>
+
+
+                <div class="total-row">
+
+                    <span>
+                        Total a pagar
+                    </span>
+
+                    <strong>
+                        {{
+                        totalVenta()
+                        | currency:'PEN':'S/ '
+                        }}
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================================================= -->
+            <!-- ACCIONES -->
+            <!-- ================================================= -->
+
+            <div class="sale-actions">
+
+                <button type="button" class="checkout-button" [disabled]="
+            carrito().length === 0 ||
+            isProcessing()
+          " (click)="abrirModalPago()">
+
+                    @if (
+                    isProcessing()
+                    ) {
+
+                    <span class="button-spinner"></span>
+
+                    Procesando venta...
+
+                    } @else {
+
+                    <span>
+                        💳
+                    </span>
+
+                    Cobrar y generar ticket
+
+                    }
+
+                </button>
+
+
+                <button type="button" class="cancel-button" [disabled]="
+            carrito().length === 0 ||
+            isProcessing()
+          " (click)="cancelarVenta()">
+
+                    Cancelar venta
+
+                </button>
+
+            </div>
+
+        </aside>
+
+    </div>
+
+</div>
+
+<!-- MODAL DE PAGO -->
+<div class="modal" *ngIf="mostrarModalPago()" style="display: block; background: rgba(0,0,0,0.5); position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999;">
+  <div class="modal-dialog" style="margin-top: 10%; max-width: 500px; background: white; border-radius: 8px; padding: 20px; position: relative; margin-left: auto; margin-right: auto;">
+    <div class="modal-header">
+      <h5 class="modal-title">Procesar Pago</h5>
+      <button type="button" class="btn-close" (click)="cerrarModalPago()" style="position: absolute; right: 20px; top: 20px; border: none; background: transparent; font-size: 1.5rem; cursor: pointer;">&times;</button>
+    </div>
+    <div class="modal-body" style="margin-top: 15px;">
+      <h3 style="text-align: center; color: #2ecc71;">TOTAL A PAGAR: {{ totalVenta() | currency:'PEN':'symbol' }}</h3>
+      <h4 style="text-align: center; color: #e74c3c;">SALDO RESTANTE: {{ saldoRestante() | currency:'PEN':'symbol' }}</h4>
+      
+      <div style="margin-top: 20px; display: flex; gap: 10px;">
+        <select [ngModel]="metodoPagoSeleccionado()" (ngModelChange)="metodoPagoSeleccionado.set($event)" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; flex: 1;">
+          <option value="EFECTIVO">EFECTIVO</option>
+          <option value="YAPE">YAPE</option>
+          <option value="PLIN">PLIN</option>
+          <option value="TARJETA">TARJETA</option>
+        </select>
+        <input type="number" [ngModel]="montoPagoInput()" (ngModelChange)="montoPagoInput.set($event)" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100px;">
+        <button type="button" (click)="agregarPago()" style="padding: 8px 15px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">Agregar</button>
+      </div>
+
+      <div style="margin-top: 20px;" *ngIf="pagosAgregados().length > 0">
+        <ul style="list-style: none; padding: 0;">
+          <li *ngFor="let p of pagosAgregados(); let i = index" style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
+            <span>{{ p.metodoPago }}</span>
+            <span>{{ p.monto | currency:'PEN':'symbol' }} <button (click)="removerPago(i)" style="border: none; background: transparent; color: red; cursor: pointer; margin-left: 10px;">&times;</button></span>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="modal-footer" style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+      <button type="button" (click)="cerrarModalPago()" style="padding: 10px 20px; background: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancelar</button>
+      <button type="button" [disabled]="isProcessing()" (click)="procesarVenta()" style="padding: 10px 20px; background: #2ecc71; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        {{ isProcessing() ? 'Procesando...' : 'Confirmar Venta' }}
+      </button>
+    </div>
+  </div>
+</div>
+

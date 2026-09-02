@@ -1,0 +1,48 @@
+<div class="page-header">
+  <div>
+    <h1>Movimientos de Inventario</h1>
+    <p class="text-muted">Gestión de Entradas y Salidas de Almacén.</p>
+  </div>
+</div>
+
+<div class="glass-panel fade-in" style="max-width: 600px; margin: 0 auto; padding: 2rem;">
+  
+  <div *ngIf="successMessage" class="alert alert-success fade-in" style="margin-bottom: 1.5rem; background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 1rem; border-radius: 8px;">
+    ✅ {{ successMessage }}
+  </div>
+
+  <div *ngIf="errorMessage" class="alert alert-danger fade-in" style="margin-bottom: 1.5rem; background: rgba(239, 68, 68, 0.2); color: #f87171; padding: 1rem; border-radius: 8px;">
+    ❌ {{ errorMessage }}
+  </div>
+
+  <form [formGroup]="movimientoForm" (ngSubmit)="registrarIngreso()">
+    
+    <div class="form-group" style="margin-bottom: 1.5rem;">
+      <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Seleccionar Producto</label>
+      <select formControlName="idProducto" class="input-control">
+        <option value="" disabled>-- Seleccione un Producto --</option>
+        <option *ngFor="let p of productos" [value]="p.id">{{ p.nombre }} (Stock: {{ p.stockActual }})</option>
+      </select>
+    </div>
+
+    <div class="form-row" style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem;">
+      <div class="form-group" style="flex: 1;">
+        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Cantidad a Ingresar</label>
+        <input type="number" formControlName="cantidad" class="input-control" placeholder="Ej. 100">
+      </div>
+
+      <div class="form-group" style="flex: 1;">
+        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Motivo</label>
+        <select formControlName="motivo" class="input-control">
+          <option value="Ingreso Inicial">Ingreso Inicial</option>
+          <option value="Ingreso Extra">Ingreso Extra (Compra)</option>
+          <option value="Devolución">Devolución</option>
+        </select>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-glow" style="width: 100%; padding: 1rem; font-size: 1.1rem;" [disabled]="movimientoForm.invalid || isSubmitting">
+      {{ isSubmitting ? 'Registrando...' : '📦 Registrar Ingreso de Stock' }}
+    </button>
+  </form>
+</div>

@@ -1,0 +1,51 @@
+<div class="mantenimiento-container">
+    <div class="header-actions">
+        <div>
+            <h2>Categorías de Productos</h2>
+        </div>
+        @if (!mostrandoFormulario()) {
+        <button class="btn-primary" (click)="mostrandoFormulario.set(true); categoriaForm.reset()">+ Nueva
+            Categoría</button>
+        } @else {
+        <button class="btn-secondary" (click)="mostrandoFormulario.set(false)">Volver</button>
+        }
+    </div>
+
+    @if (!mostrandoFormulario()) {
+    <div class="card table-card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (cat of categorias(); track cat.idCategoria) {
+                <tr>
+                    <td><strong>{{ cat.nombre }}</strong></td>
+                    <td>{{ cat.descripcion }}</td>
+                    <td><span class="status active">{{ cat.estado }}</span></td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    } @else {
+    <div class="card form-card">
+        <form [formGroup]="categoriaForm" (ngSubmit)="guardarCategoria()">
+            <div class="form-group">
+                <label>Nombre de Categoría</label>
+                <input type="text" formControlName="nombre">
+            </div>
+            <div class="form-group">
+                <label>Descripción</label>
+                <input type="text" formControlName="descripcion">
+            </div>
+            <button type="submit" class="btn-primary"
+                [disabled]="categoriaForm.invalid || isSubmitting()">Guardar</button>
+        </form>
+    </div>
+    }
+</div>

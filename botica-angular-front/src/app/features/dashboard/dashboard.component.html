@@ -1,0 +1,99 @@
+﻿<div class="dashboard-header">
+  <h1>Dashboard / Reportes</h1>
+  <p class="text-muted">Resumen general de tu botica (Historial Completo).</p>
+</div>
+
+<div class="metrics-grid">
+  <div class="metric-card glass-panel">
+    <h3>Ventas Totales</h3>
+    <div class="value text-success">S/ {{ metricas()?.totalVentas | number:'1.2-2' }}</div>
+    <div class="trend up">Operaciones: {{ metricas()?.cantidadOperaciones }}</div>
+  </div>
+  
+  <div class="metric-card glass-panel">
+    <h3>Ticket Promedio</h3>
+    <div class="value text-primary">S/ {{ metricas()?.ticketPromedio | number:'1.2-2' }}</div>
+    <div class="trend up">Por cliente</div>
+  </div>
+  
+  <div class="metric-card glass-panel">
+    <h3>Productos Stock Bajo</h3>
+    <div class="value text-danger">{{ bajoStock().length }}</div>
+    <div class="trend down">Requiere atención</div>
+  </div>
+</div>
+
+<div class="glass-panel" style="padding: 1.5rem; margin-top: 2rem;">
+  <h3>Historial de Ventas</h3>
+  <table class="table" style="width: 100%; text-align: left; margin-top: 1rem;">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Fecha</th>
+        <th>Cliente</th>
+        <th>Cajero</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let v of historialVentas()">
+        <td>#{{ v.idVenta }}</td>
+        <td>{{ v.fechaEmision | date:'short' }}</td>
+        <td>{{ v.cliente?.nombreRazonSocial || 'Público General' }}</td>
+        <td>{{ v.usuario?.nombreCompleto || v.usuario?.username }}</td>
+        <td class="text-success font-bold">S/ {{ v.total | number:'1.2-2' }}</td>
+      </tr>
+      <tr *ngIf="historialVentas().length === 0">
+        <td colspan="5" class="text-center text-muted">No hay ventas registradas.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="tables-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 2rem;">
+  <div class="glass-panel" style="padding: 1.5rem;">
+    <h3>Alerta: Bajo Stock</h3>
+    <table class="table" style="width: 100%; text-align: left; margin-top: 1rem;">
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Stock Actual</th>
+          <th>Mínimo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of bajoStock().slice(0, 5)">
+          <td>{{ item.nombre }}</td>
+          <td class="text-danger font-bold">{{ item.stockActual }}</td>
+          <td>{{ item.stockMinimo }}</td>
+        </tr>
+        <tr *ngIf="bajoStock().length === 0">
+          <td colspan="3" class="text-center text-muted">No hay productos con bajo stock.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="glass-panel" style="padding: 1.5rem;">
+    <h3>Alerta: Lotes por Vencer</h3>
+    <table class="table" style="width: 100%; text-align: left; margin-top: 1rem;">
+      <thead>
+        <tr>
+          <th>Lote</th>
+          <th>Producto</th>
+          <th>Vencimiento</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of lotesVencer().slice(0, 5)">
+          <td>{{ item.codigoLote }}</td>
+          <td>{{ item.producto }}</td>
+          <td class="text-warning font-bold">{{ item.fechaVencimiento }}</td>
+        </tr>
+        <tr *ngIf="lotesVencer().length === 0">
+          <td colspan="3" class="text-center text-muted">No hay lotes próximos a vencer.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

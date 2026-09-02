@@ -1,0 +1,50 @@
+<div class="mantenimiento-container">
+    <div class="header-actions">
+        <div>
+            <h2>Directorio de Laboratorios</h2>
+        </div>
+        @if (!mostrandoFormulario()) {
+        <button class="btn-primary" (click)="mostrandoFormulario.set(true); labForm.reset()">+ Nuevo
+            Laboratorio</button>
+        } @else {
+        <button class="btn-secondary" (click)="mostrandoFormulario.set(false)">Volver</button>
+        }
+    </div>
+
+    @if (!mostrandoFormulario()) {
+    <div class="card table-card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nombre del Laboratorio</th>
+                    <th>Descripción</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (lab of laboratorios(); track lab.idLaboratorio) {
+                <tr>
+                    <td><strong>{{ lab.nombre }}</strong></td>
+                    <td>{{ lab.descripcion }}</td>
+                    <td><span class="status active">{{ lab.estado }}</span></td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    } @else {
+    <div class="card form-card">
+        <form [formGroup]="labForm" (ngSubmit)="guardarLaboratorio()">
+            <div class="form-group">
+                <label>Nombre del Laboratorio</label>
+                <input type="text" formControlName="nombre">
+            </div>
+            <div class="form-group">
+                <label>Descripción</label>
+                <input type="text" formControlName="descripcion">
+            </div>
+            <button type="submit" class="btn-primary" [disabled]="labForm.invalid || isSubmitting()">Guardar</button>
+        </form>
+    </div>
+    }
+</div>

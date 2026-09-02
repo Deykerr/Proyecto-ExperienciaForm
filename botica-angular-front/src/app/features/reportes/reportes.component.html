@@ -1,0 +1,131 @@
+<div class="dashboard-container">
+
+    <div class="header-section">
+        <h2>Panel de Control y Reportes</h2>
+        <p class="subtitle">Métricas en tiempo real de la Botica</p>
+    </div>
+
+    <!-- TARJETAS DE INDICADORES (KPIs) -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-icon">💰</div>
+            <div class="kpi-data">
+                <h3>Ventas de Hoy</h3>
+                <p class="kpi-value">{{ metricas().totalVentas | currency:'PEN':'S/. ' }}</p>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon">🧾</div>
+            <div class="kpi-data">
+                <h3>Operaciones</h3>
+                <p class="kpi-value">{{ metricas().cantidadOperaciones }}</p>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon">📊</div>
+            <div class="kpi-data">
+                <h3>Ticket Promedio</h3>
+                <p class="kpi-value">{{ metricas().ticketPromedio | currency:'PEN':'S/. ' }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN PRINCIPAL: GRÁFICO Y ALERTAS -->
+    <div class="main-grid">
+
+        <!-- COLUMNA IZQUIERDA: GRÁFICO -->
+        <div class="chart-section card">
+            <h3>Resumen Semanal de Ventas</h3>
+            <div class="canvas-container">
+                <!-- El ViewChild se enlaza a este canvas -->
+                <canvas #graficoVentas></canvas>
+            </div>
+        </div>
+
+        <!-- COLUMNA DERECHA: ALERTAS -->
+        <div class="alerts-section">
+
+            <!-- Tabla de Stock Crítico -->
+            <div class="card alert-card">
+                <h3 class="alert-title danger">⚠️ Stock Crítico</h3>
+                <table class="simple-table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Stock</th>
+                            <th>Mínimo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (prod of bajoStock(); track prod.codigoBarras) {
+                        <tr>
+                            <td>{{ prod.nombre }}</td>
+                            <td><strong style="color: #dc3545;">{{ prod.stockActual }}</strong></td>
+                            <td>{{ prod.stockMinimo }}</td>
+                        </tr>
+                        } @empty {
+                        <tr>
+                            <td colspan="3">Stock en niveles óptimos.</td>
+                        </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Tabla de Vencimientos -->
+            <div class="card alert-card">
+                <h3 class="alert-title warning">⏱️ Próximos a Vencer</h3>
+                <table class="simple-table">
+                    <thead>
+                        <tr>
+                            <th>Lote</th>
+                            <th>Producto</th>
+                            <th>Vence</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (lote of lotesVencer(); track lote.codigoLote) {
+                        <tr>
+                            <td>{{ lote.codigoLote }}</td>
+                            <td>{{ lote.producto }}</td>
+                            <td><strong>{{ lote.fechaVencimiento | date:'dd/MM/yyyy' }}</strong></td>
+                        </tr>
+                        } @empty {
+                        <tr>
+                            <td colspan="3">No hay lotes próximos a vencer.</td>
+                        </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+<!-- HISTORIAL DE VENTAS -->
+<div class="glass-panel mt-4 p-4">
+  <h3>Historial de Ventas Completadas</h3>
+  <table class="table w-100 mt-3" style="text-align: left;">
+    <thead>
+      <tr>
+        <th>N° Venta</th>
+        <th>Fecha y Hora</th>
+        <th>Cliente</th>
+        <th>Cajero Autorizado</th>
+        <th>Monto Cobrado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let v of historialVentas()">
+        <td>#{{ v.idVenta }}</td>
+        <td>{{ v.fechaEmision | date:'short' }}</td>
+        <td>{{ v.cliente?.nombreRazonSocial || 'Público General' }}</td>
+        <td>{{ v.usuario?.nombreCompleto || v.usuario?.username }}</td>
+        <td class="text-success fw-bold">{{ v.total | currency:'PEN':'symbol' }}</td>
+      </tr>
+      <tr *ngIf="historialVentas().length === 0">
+        <td colspan="5" class="text-center text-muted">Aún no hay ventas registradas.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

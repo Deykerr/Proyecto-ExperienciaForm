@@ -1,0 +1,222 @@
+// ==========================================
+// Variables & Configuración
+// ==========================================
+$primary-color: #4f46e5; // Indigo principal
+$primary-hover: #4338ca;
+$bg-color: #f8fafc; // Fondo neutro suave
+$card-bg: #ffffff;
+$text-main: #1e293b; // Gris oscuro para lectura
+$text-muted: #64748b; // Gris secundario
+$border-color: #e2e8f0;
+$radius: 12px;
+$shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+$shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+
+// ==========================================
+// Estilos del Contenedor Principal
+// ==========================================
+.mantenimiento-container {
+    max-width: 1100px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: $text-main;
+
+    // Header & Acciones
+    .header-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+
+        h2 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: $text-main;
+            margin: 0;
+            letter-spacing: -0.02em;
+        }
+    }
+
+    // Estilos de Botones
+    .btn-primary,
+    .btn-secondary {
+        padding: 0.625rem 1.25rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+
+        &:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            filter: grayscale(40%);
+        }
+    }
+
+    .btn-primary {
+        background-color: $primary-color;
+        color: #ffffff;
+        box-shadow: 0 2px 4px rgba($primary-color, 0.2);
+
+        &:hover:not(:disabled) {
+            background-color: $primary-hover;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba($primary-color, 0.3);
+        }
+
+        &:active:not(:disabled) {
+            transform: translateY(0);
+        }
+    }
+
+    .btn-secondary {
+        background-color: #ffffff;
+        color: $text-muted;
+        border: 1px solid $border-color;
+
+        &:hover {
+            background-color: #f1f5f9;
+            color: $text-main;
+        }
+    }
+
+    // Tarjetas Contenedoras (Formulario y Tabla)
+    .card {
+        background: $card-bg;
+        border-radius: $radius;
+        border: 1px solid $border-color;
+        box-shadow: $shadow;
+        overflow: hidden;
+        transition: box-shadow 0.3s ease;
+
+        &:hover {
+            box-shadow: $shadow-hover;
+        }
+    }
+
+    // ==========================================
+    // Vista de Tabla
+    // ==========================================
+    .table-card {
+        overflow-x: auto; // Scroll en pantallas pequeñas
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.925rem;
+
+            thead {
+                background-color: #f8fafc;
+                border-bottom: 1px solid $border-color;
+
+                th {
+                    padding: 1rem 1.25rem;
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    color: $text-muted;
+                }
+            }
+
+            tbody {
+                tr {
+                    border-bottom: 1px solid $border-color;
+                    transition: background-color 0.15s ease;
+
+                    &:last-child {
+                        border-bottom: none;
+                    }
+
+                    &:hover {
+                        background-color: #f8fafc;
+                    }
+                }
+
+                td {
+                    padding: 1rem 1.25rem;
+                    color: $text-main;
+                    vertical-align: middle;
+
+                    strong {
+                        font-weight: 600;
+                    }
+                }
+            }
+        }
+
+        // Badge de Estado
+        .status {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 9999px;
+            text-transform: capitalize;
+
+            &.active {
+                background-color: #dcfce7;
+                color: #15803d;
+            }
+        }
+    }
+
+    // ==========================================
+    // Vista de Formulario
+    // ==========================================
+    .form-card {
+        padding: 2rem;
+        max-width: 600px;
+        margin: 0 auto; // Centrar el formulario si la pantalla es muy ancha
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+
+            .form-group {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+
+                label {
+                    font-size: 0.875rem;
+                    font-weight: 600;
+                    color: $text-main;
+                }
+
+                input {
+                    padding: 0.75rem 1rem;
+                    font-size: 0.95rem;
+                    border-radius: 8px;
+                    border: 1px solid $border-color;
+                    background-color: #ffffff;
+                    color: $text-main;
+                    outline: none;
+                    transition: all 0.2s ease;
+
+                    &:focus {
+                        border-color: $primary-color;
+                        box-shadow: 0 0 0 3px rgba($primary-color, 0.15);
+                    }
+
+                    &::placeholder {
+                        color: #94a3b8;
+                    }
+                }
+            }
+
+            button[type="submit"] {
+                margin-top: 0.5rem;
+                align-self: flex-start;
+            }
+        }
+    }
+}

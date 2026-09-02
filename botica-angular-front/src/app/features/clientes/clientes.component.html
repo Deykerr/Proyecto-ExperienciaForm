@@ -1,0 +1,94 @@
+<div class="clientes-container">
+
+  <div class="header-actions">
+    <div>
+      <h2>Cartera de Clientes</h2>
+      <p class="subtitle">Gestión de personas naturales y empresas para facturación</p>
+    </div>
+
+    @if (!mostrandoFormulario()) {
+    <button class="btn-primary" (click)="abrirFormulario()">+ Nuevo Cliente</button>
+    } @else {
+    <button class="btn-secondary" (click)="cerrarFormulario()">Volver al Listado</button>
+    }
+  </div>
+
+  <!-- VISTA DE LISTADO -->
+  @if (!mostrandoFormulario()) {
+  <div class="card table-card">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Tipo Doc.</th>
+          <th>Número de Documento</th>
+          <th>Nombre / Razón Social</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (cli of clientes(); track cli.idCliente) {
+        <tr>
+          <td><span class="badge-doc">{{ cli.tipoDocumento }}</span></td>
+          <td><strong>{{ cli.numeroDocumento }}</strong></td>
+          <td>{{ cli.nombreRazonSocial }}</td>
+          <td>
+            <button class="btn-icon">✏️</button>
+          </td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="4" class="empty-state">No hay clientes registrados en el sistema.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  }
+
+  <!-- VISTA DE FORMULARIO -->
+  @else {
+  <div class="card form-card">
+    <h3>Registrar Nuevo Cliente</h3>
+
+    <form [formGroup]="clienteForm" (ngSubmit)="guardarCliente()">
+
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label>Tipo de Documento</label>
+          <select formControlName="tipoDocumento">
+            <option value="DNI">DNI (Boleta)</option>
+            <option value="RUC">RUC (Factura)</option>
+            <option value="CARNET_EXT">Carnet de Extranjería</option>
+          </select>
+        </div>
+        <div class="form-group flex-2">
+          <label>Número de Documento</label>
+          <input type="text" formControlName="numeroDocumento" placeholder="Ingrese el número exacto">
+          @if (clienteForm.controls.numeroDocumento.invalid && clienteForm.controls.numeroDocumento.touched) {
+          <small class="error-text">Documento inválido.</small>
+          }
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Nombre Completo o Razón Social</label>
+        <input type="text" formControlName="nombreRazonSocial" placeholder="Ej. Juan Pérez / Boticas Perú S.A.C.">
+      </div>
+
+      <div class="form-group">
+        <label>Dirección Fiscal (Obligatorio para RUC)</label>
+        <input type="text" formControlName="direccion" placeholder="Ej. Av. Principal 123">
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" (click)="cerrarFormulario()">Cancelar</button>
+        <button type="submit" class="btn-primary" [disabled]="clienteForm.invalid || isSubmitting()">
+          {{ isSubmitting() ? 'Guardando...' : '💾 Guardar Cliente' }}
+        </button>
+      </div>
+
+    </form>
+  </div>
+  }
+
+</div>

@@ -1,0 +1,265 @@
+// ==========================================
+// Variables & Configuración (Tema Caja/Finanzas)
+// ==========================================
+$primary-color: #10b981; // Verde esmeralda (Apertura/Operación)
+$primary-hover: #059669;
+$danger-color: #ef4444; // Rojo (Cierre/Acciones críticas)
+$danger-hover: #dc2626;
+$bg-color: #f8fafc;
+$card-bg: #ffffff;
+$text-main: #0f172a;
+$text-muted: #64748b;
+$border-color: #e2e8f0;
+$radius: 12px;
+$shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+$shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+
+// ==========================================
+// Estilos del Contenedor Principal
+// ==========================================
+.caja-container {
+    max-width: 600px; // Diseño enfocado y centrado para terminal de caja
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: $text-main;
+
+    h2 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: $text-main;
+        margin: 0;
+        letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+        margin: 0.25rem 0 1.5rem 0;
+        font-size: 0.875rem;
+        color: $text-muted;
+    }
+
+    // Alerta de Error Prominente
+    .alert.error {
+        background-color: #fef2f2;
+        border: 1px solid #fca5a5;
+        color: #991b1b;
+        padding: 0.875rem 1rem;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-bottom: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    // Loader de Estado
+    .loader {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: $text-muted;
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+
+    // Estilos Generales de Tarjetas
+    .card {
+        background: $card-bg;
+        border-radius: $radius;
+        border: 1px solid $border-color;
+        box-shadow: $shadow;
+        padding: 2rem;
+        transition: box-shadow 0.3s ease;
+
+        &:hover {
+            box-shadow: $shadow-hover;
+        }
+
+        h3 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: $text-main;
+        }
+
+        p {
+            margin: 0.5rem 0 1.5rem 0;
+            font-size: 0.9rem;
+            color: $text-muted;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid $border-color;
+            margin: 1.5rem 0;
+        }
+
+        h4 {
+            margin: 0 0 1rem 0;
+            font-size: 1rem;
+            font-weight: 700;
+            color: $text-main;
+        }
+    }
+
+    // Estilos de Botones
+    .btn-primary,
+    .btn-danger {
+        width: 100%;
+        padding: 0.75rem 1.25rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+
+        &:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+    }
+
+    .btn-primary {
+        background-color: $primary-color;
+        color: #ffffff;
+        box-shadow: 0 2px 4px rgba($primary-color, 0.25);
+
+        &:hover:not(:disabled) {
+            background-color: $primary-hover;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba($primary-color, 0.35);
+        }
+
+        &:active:not(:disabled) {
+            transform: translateY(0);
+        }
+    }
+
+    .btn-danger {
+        background-color: $danger-color;
+        color: #ffffff;
+        box-shadow: 0 2px 4px rgba($danger-color, 0.25);
+
+        &:hover:not(:disabled) {
+            background-color: $danger-hover;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba($danger-color, 0.35);
+        }
+
+        &:active:not(:disabled) {
+            transform: translateY(0);
+        }
+    }
+
+    // ==========================================
+    // ESTADO: CAJA ACTIVA
+    // ==========================================
+    .card-activa {
+        .estado-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+
+            .badge.status-open {
+                background-color: #dcfce7;
+                color: #15803d;
+                font-size: 0.75rem;
+                font-weight: 700;
+                padding: 0.25rem 0.75rem;
+                border-radius: 9999px;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            background-color: #f8fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid $border-color;
+
+            @media (max-width: 480px) {
+                grid-template-columns: 1fr;
+            }
+
+            .info-item {
+                display: flex;
+                flex-direction: column;
+                gap: 0.25rem;
+
+                label {
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                    color: $text-muted;
+                    text-transform: uppercase;
+                    letter-spacing: 0.03em;
+                }
+
+                span {
+                    font-size: 0.95rem;
+                    font-weight: 700;
+                    color: $text-main;
+                }
+            }
+        }
+    }
+
+    // ==========================================
+    // CAMPOS DE FORMULARIO
+    // ==========================================
+    form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+
+            label {
+                font-size: 0.875rem;
+                font-weight: 600;
+                color: $text-main;
+            }
+
+            input {
+                padding: 0.75rem 1rem;
+                font-size: 1rem;
+                font-weight: 600;
+                border-radius: 8px;
+                border: 1px solid $border-color;
+                background-color: #ffffff;
+                color: $text-main;
+                outline: none;
+                transition: all 0.2s ease;
+
+                &:focus {
+                    border-color: $primary-color;
+                    box-shadow: 0 0 0 3px rgba($primary-color, 0.15);
+                }
+
+                &::placeholder {
+                    color: #94a3b8;
+                }
+            }
+
+            .error-text {
+                font-size: 0.75rem;
+                color: $danger-color;
+                font-weight: 500;
+                margin-top: 0.125rem;
+            }
+        }
+    }
+}

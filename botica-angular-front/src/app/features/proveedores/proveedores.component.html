@@ -1,0 +1,102 @@
+<div class="proveedores-container">
+
+    <div class="header-actions">
+        <div>
+            <h2>Directorio de Proveedores</h2>
+            <p class="subtitle">Administra las droguerías y laboratorios que abastecen la botica</p>
+        </div>
+
+        @if (!mostrandoFormulario()) {
+        <button class="btn-primary" (click)="abrirFormulario()">+ Nuevo Proveedor</button>
+        } @else {
+        <button class="btn-secondary" (click)="cerrarFormulario()">Volver al Listado</button>
+        }
+    </div>
+
+    <!-- VISTA DE LISTADO -->
+    @if (!mostrandoFormulario()) {
+    <div class="card table-card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>RUC</th>
+                    <th>Razón Social</th>
+                    <th>Teléfono</th>
+                    <th>Correo Contacto</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (prov of proveedores(); track prov.idProveedor) {
+                <tr>
+                    <td><strong>{{ prov.ruc }}</strong></td>
+                    <td>{{ prov.razonSocial }}</td>
+                    <td>{{ prov.telefono || 'No registrado' }}</td>
+                    <td>{{ prov.correo || 'No registrado' }}</td>
+                    <td>
+                        <span class="status active">Activo</span>
+                    </td>
+                </tr>
+                } @empty {
+                <tr>
+                    <td colspan="5" class="empty-state">No hay proveedores registrados. ¡Agrega el primero!</td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    }
+
+    <!-- VISTA DE FORMULARIO -->
+    @else {
+    <div class="card form-card">
+        <h3>Registrar Nuevo Proveedor</h3>
+
+        <form [formGroup]="proveedorForm" (ngSubmit)="guardarProveedor()">
+
+            <div class="form-row">
+                <div class="form-group flex-1">
+                    <label>Número de RUC</label>
+                    <input type="text" formControlName="ruc" placeholder="11 dígitos" maxlength="11">
+                    @if (proveedorForm.controls.ruc.invalid && proveedorForm.controls.ruc.touched) {
+                    <small class="error-text">El RUC debe tener exactamente 11 números.</small>
+                    }
+                </div>
+
+                <div class="form-group flex-2">
+                    <label>Razón Social</label>
+                    <input type="text" formControlName="razonSocial" placeholder="Ej. Droguería del Sur S.A.C.">
+                    @if (proveedorForm.controls.razonSocial.invalid && proveedorForm.controls.razonSocial.touched) {
+                    <small class="error-text">La razón social es obligatoria.</small>
+                    }
+                </div>
+            </div>
+
+            <div class="form-row split-2">
+                <div class="form-group">
+                    <label>Teléfono de Contacto (Opcional)</label>
+                    <input type="text" formControlName="telefono" placeholder="Ej. 01 234 5678">
+                </div>
+                <div class="form-group">
+                    <label>Correo Electrónico (Opcional)</label>
+                    <input type="email" formControlName="correo" placeholder="ventas@drogueria.com">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Dirección Física (Opcional)</label>
+                <input type="text" formControlName="direccion" placeholder="Ej. Av. Los Próceres 456">
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" (click)="cerrarFormulario()">Cancelar</button>
+                <button type="submit" class="btn-primary" [disabled]="proveedorForm.invalid || isSubmitting()">
+                    {{ isSubmitting() ? 'Guardando...' : '💾 Guardar Proveedor' }}
+                </button>
+            </div>
+
+        </form>
+    </div>
+    }
+
+</div>

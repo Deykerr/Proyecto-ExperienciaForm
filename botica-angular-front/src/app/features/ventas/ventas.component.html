@@ -1,0 +1,217 @@
+<div class="pos-layout">
+  
+  <div class="pos-catalog glass-panel fade-in">
+    <div class="catalog-header" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+      <h2>Punto de Venta</h2>
+      <input type="text" class="input-control search-input" style="max-width: 300px;" 
+             placeholder="🔍 Buscar medicamento..." [(ngModel)]="busqueda" (keyup)="buscarProducto()">
+    </div>
+    
+    <div class="product-grid">
+      <div class="product-card" *ngFor="let p of productosFiltrados" (click)="agregarAlCarrito(p)">
+        <div class="prod-badge" *ngIf="p.stockActual <= p.stockMinimo">Poco Stock</div>
+        <div class="prod-name">{{ p.nombre }}</div>
+        <div class="text-muted" style="font-size: 0.8rem; margin-bottom: 0.5rem;">{{ p.descripcion }}</div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto;">
+          <div class="prod-price text-emerald">$ {{ p.precioVenta | number:'1.2-2' }}</div>
+          <div class="prod-stock">📦 {{ p.stockActual }} unid.</div>
+        </div>
+      </div>
+      
+      <div *ngIf="productosFiltrados.length === 0" class="empty-state text-muted">
+        No se encontraron productos disponibles para venta.
+      </div>
+    </div>
+  </div>
+
+  <div class="pos-cart glass-panel fade-in">
+    <h3>🛒 Venta Actual</h3>
+    
+    <div *ngIf="ventaSuccess" class="alert alert-success fade-in" style="margin-bottom: 1rem; background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 1rem; border-radius: 8px;">
+      ✅ ¡Venta registrada exitosamente!
+    </div>
+
+    <!-- Buscador de Cliente -->
+    <div class="cliente-section" style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+      <div *ngIf="!clienteSeleccionado">
+        <label class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem; display: block;">Cliente</label>
+        <div style="display: flex; gap: 0.5rem;">
+          <select class="input-control" style="width: auto;" [(ngModel)]="criterioBusquedaCliente">
+            <option value="DNI">DNI/RUC</option>
+            <option value="NOMBRE">Nombre</option>
+          </select>
+          <input type="text" class="input-control" [placeholder]="criterioBusquedaCliente === 'DNI' ? 'Ingrese documento' : 'Ingrese nombre'" 
+                 [(ngModel)]="documentoCliente" (keyup.enter)="buscarCliente()"
+                 [maxlength]="criterioBusquedaCliente === 'DNI' ? 11 : 100">
+          <button class="btn btn-secondary" (click)="buscarCliente()" [disabled]="buscandoCliente || !documentoCliente">🔍</button>
+        </div>
+        
+        <div *ngIf="resultadosClientes.length > 0" class="results-list" style="margin-top: 0.5rem; max-height: 150px; overflow-y: auto; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 4px;">
+          <div *ngFor="let c of resultadosClientes" (click)="seleccionarDeLista(c)" 
+               style="padding: 0.5rem; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div style="font-weight: bold;">{{ c.nombreRazonSocial }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">{{ c.tipoDocumento }}: {{ c.numeroDocumento }}</div>
+          </div>
+        </div>
+
+        <div *ngIf="errorCliente" class="text-danger" style="font-size: 0.8rem; margin-top: 0.5rem; color: #ef4444;">
+          {{ errorCliente }} <a routerLink="/clientes" style="color: #3b82f6;">Registrar</a>
+        </div>
+      </div>
+      
+      <div *ngIf="clienteSeleccionado" class="cliente-seleccionado" style="background: rgba(16, 185, 129, 0.1); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.3); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-size: 0.8rem; color: #10b981; font-weight: 600;">Cliente Seleccionado</div>
+          <div style="font-weight: 500;">{{ clienteSeleccionado.nombreRazonSocial }}</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">{{ clienteSeleccionado.tipoDocumento }}: {{ clienteSeleccionado.numeroDocumento }}</div>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button class="btn btn-sm btn-icon" style="color: #3b82f6;" (click)="abrirModalEdicionCliente()" title="Editar Cliente">✏️</button>
+          <button class="btn btn-sm btn-icon" style="color: #ef4444;" (click)="removerCliente()" title="Cambiar Cliente">✖</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="cart-items">
+      <div class="cart-item" *ngFor="let item of carrito; let i = index">
+        <div class="item-info">
+          <span class="item-name">{{ getProducto(item.productoId)?.nombre }}</span>
+          <span class="item-price text-emerald">$ {{ item.precioUnitario | number:'1.2-2' }} c/u</span>
+        </div>
+        
+        <div class="item-actions">
+          <div class="qty-control">
+            <button class="btn-qty" (click)="disminuirCantidad(item, i)">-</button>
+            <span class="qty-display">{{ item.cantidad }}</span>
+            <button class="btn-qty" (click)="aumentarCantidad(item, getProducto(item.productoId)?.stockActual || 0)">+</button>
+          </div>
+          <div class="item-subtotal">
+            <strong>$ {{ item.subtotal | number:'1.2-2' }}</strong>
+          </div>
+          <button class="btn-remove" (click)="removerDelCarrito(i)" title="Quitar">🗑️</button>
+        </div>
+      </div>
+      
+      <div *ngIf="carrito.length === 0" class="empty-cart text-muted">
+        El carrito está vacío.<br>Seleccione productos del catálogo.
+      </div>
+    </div>
+    
+    <div class="cart-summary">
+      <div style="margin-bottom: 1rem;">
+        <label class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem; display: block;">Comprobante</label>
+        <select class="input-control w-100" [(ngModel)]="tipoComprobante">
+          <option value="BOLETA">Boleta</option>
+          <option value="FACTURA">Factura</option>
+          <option value="TICKET">Ticket</option>
+        </select>
+      </div>
+
+      <div class="summary-row total">
+        <span>Total a Cobrar</span>
+        <span class="text-emerald" style="font-size: 1.5rem;">$ {{ totalVenta | number:'1.2-2' }}</span>
+      </div>
+      
+      <button class="btn btn-primary btn-glow w-100" 
+              style="margin-top: 1rem; padding: 1rem; font-size: 1.1rem; border-radius: 12px; width: 100%;" 
+              [disabled]="carrito.length === 0 || !clienteSeleccionado || isProcessing" 
+              (click)="abrirModalPago()">
+        <span>💳 Cobrar</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE PAGO -->
+<div class="modal-backdrop fade-in" *ngIf="mostrarModalPago" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;">
+  <div class="modal-panel glass-panel" style="background: var(--bg-panel); padding: 2rem; border-radius: 12px; width: 400px; max-width: 90%; border: 1px solid var(--border-color);">
+    <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1rem;">
+      <h3 style="margin: 0; color: #10b981;">Confirmar Pago</h3>
+      <button class="btn-icon" (click)="cerrarModalPago()" style="color: var(--text-muted); background: none; border: none; font-size: 1.2rem; cursor: pointer;">✖</button>
+    </div>
+    
+    <div class="modal-body">
+      <div style="font-size: 1.5rem; text-align: center; margin-bottom: 1.5rem;">
+        Total: <strong class="text-emerald">$ {{ totalVenta | number:'1.2-2' }}</strong>
+      </div>
+      
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label>Método de Pago</label>
+        <select class="input-control w-100" [(ngModel)]="metodoPago">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="YAPE">Yape</option>
+          <option value="PLIN">Plin</option>
+          <option value="TARJETA">Tarjeta</option>
+          <option value="TRANSFERENCIA">Transferencia</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1rem;" *ngIf="metodoPago === 'EFECTIVO'">
+        <label>Monto Recibido</label>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <span style="font-size: 1.2rem; color: var(--text-muted);">$</span>
+          <input type="number" class="input-control w-100" [(ngModel)]="montoRecibido" style="font-size: 1.2rem; text-align: right;">
+        </div>
+      </div>
+      
+      <div class="form-group" *ngIf="metodoPago === 'EFECTIVO'" style="display: flex; justify-content: space-between; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px;">
+        <span style="color: var(--text-muted);">Vuelto</span>
+        <strong style="color: #3b82f6; font-size: 1.2rem;">$ {{ vuelto | number:'1.2-2' }}</strong>
+      </div>
+      
+    </div>
+    
+    <div class="modal-footer" style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+      <button class="btn btn-secondary w-100" (click)="cerrarModalPago()" [disabled]="isProcessing">Cancelar</button>
+      <button class="btn btn-primary w-100" (click)="confirmarVenta()" [disabled]="isProcessing || (metodoPago === 'EFECTIVO' && montoRecibido < totalVenta)">
+        <span *ngIf="!isProcessing">Confirmar Venta</span>
+        <span *ngIf="isProcessing">Procesando...</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE EDICIÓN DE CLIENTE -->
+<div class="modal-backdrop fade-in" *ngIf="mostrarModalEdicionCliente" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;">
+  <div class="modal-panel glass-panel" style="background: var(--bg-panel); padding: 2rem; border-radius: 12px; width: 450px; max-width: 90%; border: 1px solid var(--border-color);">
+    <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1rem;">
+      <h3 style="margin: 0; color: #3b82f6;">Editar Cliente</h3>
+      <button class="btn-icon" (click)="cerrarModalEdicionCliente()" style="color: var(--text-muted); background: none; border: none; font-size: 1.2rem; cursor: pointer;">✖</button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label>Tipo de Documento</label>
+        <select class="input-control w-100" [(ngModel)]="clienteEdicion.tipoDocumento">
+          <option value="DNI">DNI</option>
+          <option value="RUC">RUC</option>
+          <option value="CARNET_EXT">Carnet Ext.</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label>Número de Documento</label>
+        <input type="text" class="input-control w-100" [(ngModel)]="clienteEdicion.numeroDocumento">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label>Nombre / Razón Social</label>
+        <input type="text" class="input-control w-100" [(ngModel)]="clienteEdicion.nombreRazonSocial">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label>Dirección</label>
+        <input type="text" class="input-control w-100" [(ngModel)]="clienteEdicion.direccion">
+      </div>
+    </div>
+    
+    <div class="modal-footer" style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+      <button class="btn btn-secondary w-100" (click)="cerrarModalEdicionCliente()" [disabled]="guardandoCliente">Cancelar</button>
+      <button class="btn btn-primary w-100" (click)="guardarClienteEditado()" [disabled]="guardandoCliente">
+        <span *ngIf="!guardandoCliente">Guardar Cambios</span>
+        <span *ngIf="guardandoCliente">Guardando...</span>
+      </button>
+    </div>
+  </div>
+</div>

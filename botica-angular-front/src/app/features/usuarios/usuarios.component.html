@@ -1,0 +1,98 @@
+<div class="usuarios-container">
+
+    <div class="header-actions">
+        <div>
+            <h2>Gestión de Personal</h2>
+            <p class="subtitle">Administración de accesos para cajeros y almaceneros</p>
+        </div>
+
+        @if (!mostrandoFormulario()) {
+        <button class="btn-primary" (click)="abrirFormulario()">+ Nuevo Usuario</button>
+        } @else {
+        <button class="btn-secondary" (click)="cerrarFormulario()">Volver al Listado</button>
+        }
+    </div>
+
+    <!-- VISTA DE LISTADO -->
+    @if (!mostrandoFormulario()) {
+    <div class="card table-card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nombre Completo</th>
+                    <th>Usuario (Login)</th>
+                    <th>Rol</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (user of usuarios(); track user.idUsuario) {
+                <tr>
+                    <td><strong>{{ user.nombreCompleto }}</strong></td>
+                    <td>{{ user.username }}</td>
+                    <td>
+                        <span class="badge-rol" [class]="user.rol.toLowerCase()">
+                            {{ user.rol }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="status" [class.active]="user.estado === 'A'">
+                            {{ user.estado === 'A' ? 'Activo' : 'Inactivo' }}
+                        </span>
+                    </td>
+                </tr>
+                } @empty {
+                <tr>
+                    <td colspan="4" class="empty-state">No hay usuarios registrados.</td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    }
+
+    <!-- VISTA DE FORMULARIO -->
+    @else {
+    <div class="card form-card">
+        <h3>Crear Nuevo Acceso</h3>
+
+        <form [formGroup]="usuarioForm" (ngSubmit)="guardarUsuario()">
+
+            <div class="form-group">
+                <label>Nombre Completo</label>
+                <input type="text" formControlName="nombreCompleto" placeholder="Ej. Ana García">
+            </div>
+
+            <div class="form-row split-2">
+                <div class="form-group">
+                    <label>Nombre de Usuario (Username)</label>
+                    <input type="text" formControlName="username" placeholder="Ej. agarcia">
+                </div>
+
+                <div class="form-group">
+                    <label>Contraseña Provisional</label>
+                    <input type="password" formControlName="password" placeholder="Mínimo 6 caracteres">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Rol en el Sistema</label>
+                <select formControlName="rol">
+                    <option value="ADMIN">Administrador (Control Total)</option>
+                    <option value="CAJERO">Cajero (Ventas y Caja)</option>
+                    <option value="ALMACENERO">Almacenero (Compras e Inventario)</option>
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" (click)="cerrarFormulario()">Cancelar</button>
+                <button type="submit" class="btn-primary" [disabled]="usuarioForm.invalid || isSubmitting()">
+                    {{ isSubmitting() ? 'Guardando...' : '💾 Crear Usuario' }}
+                </button>
+            </div>
+
+        </form>
+    </div>
+    }
+
+</div>

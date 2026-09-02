@@ -1,0 +1,140 @@
+﻿<div class="layout-container" [class.sidebar-collapsed]="sidebarColapsado()">
+
+  <aside class="sidebar" [class.mobile-open]="sidebarMovilAbierto()">
+    <div class="sidebar-header">
+      <a routerLink="/dashboard" class="brand-link">
+        <div class="brand-logo">
+          <span class="brand-icon">💊</span>
+        </div>
+        <div class="brand-text">
+          <strong>Botica</strong>
+          <span>Virgen del Carmen</span>
+        </div>
+      </a>
+      <button type="button" class="mobile-close" (click)="cerrarSidebarMovil()">
+        ✕
+      </button>
+    </div>
+
+    <div class="sidebar-user">
+      <div class="user-avatar">{{ inicialesUsuario }}</div>
+      <div class="sidebar-user-info">
+        <strong>{{ usuario()?.nombreCompleto || 'Usuario' }}</strong>
+        <span>{{ usuario()?.rol || 'USUARIO' }}</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <!-- OPERACIONES DE CAJA -->
+      <div class="nav-section" *ngIf="hasRole(['ADMIN', 'CAJERO'])">
+        <span class="nav-section-title">VENTAS Y CAJA</span>
+
+        <a routerLink="/dashboard/pos" routerLinkActive="active" class="nav-item" (click)="navegarYcerrar()">
+          <span class="nav-icon">🛒</span>
+          <span class="nav-label">Punto de Venta</span>
+        </a>
+
+        <a routerLink="/dashboard/caja" routerLinkActive="active" class="nav-item" (click)="navegarYcerrar()">
+          <span class="nav-icon">💰</span>
+          <span class="nav-label">Caja</span>
+        </a>
+
+        <a routerLink="/dashboard/clientes" routerLinkActive="active" class="nav-item" (click)="navegarYcerrar()">
+          <span class="nav-icon">👥</span>
+          <span class="nav-label">Clientes</span>
+        </a>
+      </div>
+
+      <!-- ALMACÉN E INVENTARIO -->
+      <div class="nav-section" *ngIf="hasRole(['ADMIN', 'ALMACENERO'])">
+        <span class="nav-section-title">ALMACÉN E INVENTARIO</span>
+
+        <a routerLink="/dashboard/compras" routerLinkActive="active" class="nav-item" (click)="navegarYcerrar()">
+          <span class="nav-icon">📦</span>
+          <span class="nav-label">Ingreso / Compras</span>
+        </a>
+
+        <a routerLink="/dashboard/productos" routerLinkActive="active" class="nav-item" (click)="navegarYcerrar()">
+          <span class="nav-icon">💊</span>
+          <span class="nav-label">Productos</span>
+        </a>
+
+        <a routerLink="/dashboard/proveedores" routerLinkActive="active" class="nav-item" (click)="navegarYcerrar()">
+          <span class="nav-icon">🚚</span>
+          <span class="nav-label">Proveedores</span>
+        </a>
+
+        <a routerLink="/dashboard/categorias" routerLinkActive="active" class="nav-item" (click)="navegarYcerrar()">
+          <span class="nav-icon">🏷️</span>
+          <span class="nav-label">Categorías</span>
+        </a>
+
+        <a routerLink="/dashboard/laboratorios" routerLinkActive="active" class="nav-item" (click)="navegarYcerrar()">
+          <span class="nav-icon">🔬</span>
+          <span class="nav-label">Laboratorios</span>
+        </a>
+      </div>
+
+      <!-- ADMINISTRACIÓN Y ANÁLISIS -->
+      <div class="nav-section" *ngIf="hasRole(['ADMIN'])">
+        <span class="nav-section-title">ADMINISTRACIÓN</span>
+
+        <a routerLink="/dashboard/usuarios" routerLinkActive="active" class="nav-item" (click)="navegarYcerrar()">
+          <span class="nav-icon">🛡️</span>
+          <span class="nav-label">Personal / Accesos</span>
+        </a>
+
+        <a routerLink="/dashboard/reportes" routerLinkActive="active" class="nav-item" (click)="navegarYcerrar()">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">Reportes</span>
+        </a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="system-status">
+        <span class="status-dot"></span>
+        <span class="status-text">Sistema Operativo</span>
+      </div>
+      <button type="button" class="logout-button" (click)="logout()">
+        <span class="logout-icon">🚪</span>
+        <span class="nav-label">Cerrar sesión</span>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button type="button" class="mobile-menu-button" (click)="abrirSidebarMovil()">🍔</button>
+        <button type="button" class="collapse-button" (click)="toggleSidebar()">
+          {{ sidebarColapsado() ? '➡️' : '⬅️' }}
+        </button>
+        <div class="topbar-title">
+          <span>Sistema de Gestión</span>
+          <strong>Botica Virgen del Carmen</strong>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <div class="topbar-date">
+          <span class="date-icon">🕒</span>
+          <span>Panel {{ usuario()?.rol }}</span>
+        </div>
+        <div class="topbar-divider"></div>
+        <div class="topbar-user">
+          <div class="topbar-avatar">{{ inicialesUsuario }}</div>
+          <div class="topbar-user-info">
+            <strong>{{ usuario()?.nombreCompleto || 'Usuario' }}</strong>
+            <span>{{ usuario()?.rol || 'USUARIO' }}</span>
+          </div>
+        </div>
+        <button type="button" class="topbar-logout" (click)="logout()" title="Cerrar sesión">🚪</button>
+      </div>
+    </header>
+
+    <section class="content-area">
+      <router-outlet></router-outlet>
+    </section>
+  </main>
+</div>

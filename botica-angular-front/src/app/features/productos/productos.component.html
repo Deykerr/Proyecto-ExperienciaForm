@@ -1,0 +1,133 @@
+<div class="productos-container">
+
+  <div class="header-actions">
+    <div>
+      <h2>Catálogo de Productos</h2>
+      <p class="subtitle">Gestión de medicamentos y artículos</p>
+    </div>
+
+    @if (!mostrandoFormulario()) {
+    <button class="btn-primary" (click)="abrirFormulario()">+ Nuevo Producto</button>
+    } @else {
+    <button class="btn-secondary" (click)="cerrarFormulario()">Volver al Listado</button>
+    }
+  </div>
+
+  <!-- VISTA DE LISTADO (TABLA) -->
+  @if (!mostrandoFormulario()) {
+  <div class="card table-card">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Nombre del Producto</th>
+          <th>Categoría</th>
+          <th>Precio Venta</th>
+          <th>Stock Actual</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (prod of productos(); track prod.idProducto) {
+        <tr>
+          <td>{{ prod.codigoBarras }}</td>
+          <td><strong>{{ prod.nombre }}</strong></td>
+          <td>{{ prod.nombreCategoria }}</td>
+          <td>{{ prod.precioVenta | currency:'PEN':'S/. ' }}</td>
+          <td>
+            <span class="stock-badge" [class.low-stock]="prod.stockActual <= prod.stockMinimo">
+              {{ getDisplayStock(prod) }}
+            </span>
+          </td>
+          <td><span class="status active">Activo</span></td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="6" class="empty-state">No hay productos registrados en el catálogo.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  }
+
+  <!-- VISTA DE FORMULARIO -->
+  @else {
+  <div class="card form-card">
+    <h3>Registrar Nuevo Producto</h3>
+
+    <form [formGroup]="productoForm" (ngSubmit)="guardarProducto()">
+
+      <div class="form-row">
+        <div class="form-group flex-2">
+          <label>Nombre del Producto</label>
+          <input type="text" formControlName="nombre" placeholder="Ej. Paracetamol 500mg">
+        </div>
+        <div class="form-group flex-1">
+          <label>Categoría</label>
+          <select formControlName="idCategoria">
+            <option value="0" disabled>Seleccione...</option>
+            @for (cat of categorias(); track cat.idCategoria) {
+            <option [value]="cat.idCategoria">{{ cat.nombre }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row split-3">
+        <div class="form-group">
+          <label>Código de Barras</label>
+          <input type="text" formControlName="codigoBarras">
+        </div>
+        <div class="form-group">
+          <label>Código SUNAT (Opcional)</label>
+          <input type="text" formControlName="codigoSunat">
+        </div>
+        <div class="form-group">
+          <label>Afectación IGV</label>
+          <select formControlName="tipoAfectacionIgv">
+            <option value="10">Gravado - Operación Onerosa</option>
+            <option value="20">Exonerado - Operación Onerosa</option>
+            <option value="30">Inafecto - Operación Onerosa</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row split-3">
+        <div class="form-group">
+          <label>Precio Compra Referencial</label>
+          <input type="number" step="0.10" formControlName="precioCompra">
+        </div>
+        <div class="form-group">
+          <label>Precio Venta Unidad</label>
+          <input type="number" step="0.10" formControlName="precioVenta">
+        </div>
+        <div class="form-group">
+          <label>Alerta de Stock Mínimo (Unid.)</label>
+          <input type="number" formControlName="stockMinimo">
+        </div>
+      </div>
+
+      <div class="form-row split-2">
+        <div class="form-group">
+          <label>Unidades por Paquete (Ej: Docena=12)</label>
+          <input type="number" formControlName="unidadesPorPresentacion">
+        </div>
+        <div class="form-group">
+          <label>Precio Paquete (Caja/Docena)</label>
+          <input type="number" step="0.10" formControlName="precioPresentacion">
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" (click)="cerrarFormulario()">Cancelar</button>
+        <button type="submit" class="btn-primary" [disabled]="productoForm.invalid || isSubmitting()">
+          {{ isSubmitting() ? 'Guardando...' : '💾 Guardar Producto' }}
+        </button>
+      </div>
+
+    </form>
+  </div>
+  }
+
+</div>
