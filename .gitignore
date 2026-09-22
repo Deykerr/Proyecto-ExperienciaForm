@@ -1,1 +1,10 @@
 .env
+
+# Los respaldos pueden contener documentos, hashes y datos personales.
+/BOTICA-BACK/backup*.sql
+/backups/
+*.dump
+
+# Artefactos temporales generados para presentaciones.
+/.codex-pptx-build/
+/.codex-finalizer/

@@ -32,6 +32,18 @@ public class CajaSesion extends AuditableEntity {
     @Column(name = "monto_final", precision = 10, scale = 2)
     private BigDecimal montoFinal;
 
+    @Column(name = "monto_esperado", precision = 10, scale = 2)
+    private BigDecimal montoEsperado;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal diferencia;
+
+    @Column(name = "observaciones_cierre", length = 500)
+    private String observacionesCierre;
+
+    @Column(name = "requiere_revision", nullable = false)
+    private Boolean requiereRevision = false;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private EstadoCaja estado = EstadoCaja.ABIERTA;
@@ -60,6 +72,14 @@ public class CajaSesion extends AuditableEntity {
     public void setMontoInicial(BigDecimal montoInicial) { this.montoInicial = montoInicial; }
     public BigDecimal getMontoFinal() { return montoFinal; }
     public void setMontoFinal(BigDecimal montoFinal) { this.montoFinal = montoFinal; }
+    public BigDecimal getMontoEsperado() { return montoEsperado; }
+    public void setMontoEsperado(BigDecimal montoEsperado) { this.montoEsperado = montoEsperado; }
+    public BigDecimal getDiferencia() { return diferencia; }
+    public void setDiferencia(BigDecimal diferencia) { this.diferencia = diferencia; }
+    public String getObservacionesCierre() { return observacionesCierre; }
+    public void setObservacionesCierre(String observacionesCierre) { this.observacionesCierre = observacionesCierre; }
+    public Boolean getRequiereRevision() { return requiereRevision; }
+    public void setRequiereRevision(Boolean requiereRevision) { this.requiereRevision = requiereRevision; }
     public EstadoCaja getEstado() { return estado; }
     public void setEstado(EstadoCaja estado) { this.estado = estado; }
     public List<Pago> getPagos() { return pagos; }

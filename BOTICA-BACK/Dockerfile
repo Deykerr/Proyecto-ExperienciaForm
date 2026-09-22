@@ -7,7 +7,7 @@ WORKDIR /workspace
 # con mucha más frecuencia que el pom.xml.
 COPY pom.xml ./
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn -B -ntp dependency:go-offline
+    mvn -B -ntp dependency:resolve dependency:resolve-plugins
 
 COPY src ./src
 RUN --mount=type=cache,target=/root/.m2 \

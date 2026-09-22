@@ -737,6 +737,26 @@
     <div class="modal-body" style="margin-top: 15px;">
       <h3 style="text-align: center; color: #2ecc71;">TOTAL A PAGAR: {{ totalVenta() | currency:'PEN':'symbol' }}</h3>
       <h4 style="text-align: center; color: #e74c3c;">SALDO RESTANTE: {{ saldoRestante() | currency:'PEN':'symbol' }}</h4>
+      @if (vueltoTotal() > 0) {
+        <h4 style="text-align: center; color: #2980b9;">VUELTO: {{ vueltoTotal() | currency:'PEN':'symbol' }}</h4>
+      }
+
+      @if (requiereReceta()) {
+        <div style="margin-top: 15px;">
+          <label for="recetaVenta"><strong>Receta registrada</strong></label>
+          <select id="recetaVenta" [ngModel]="idRecetaSeleccionada()"
+            (ngModelChange)="idRecetaSeleccionada.set(+$event)"
+            style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box;">
+            <option [ngValue]="null">Seleccione una receta vigente...</option>
+            @for (receta of recetasCompatibles(); track receta.idReceta) {
+              <option [value]="receta.idReceta">{{ receta.numero }} · {{ receta.pacienteNombre }} · {{ receta.medicoNombre }}</option>
+            }
+          </select>
+          @if (recetasCompatibles().length === 0) {
+            <small style="display:block;color:#b91c1c;margin-top:6px;">No hay una receta con productos y saldo suficientes. Regístrala en Ventas y recetas.</small>
+          }
+        </div>
+      }
       
       <div style="margin-top: 20px; display: flex; gap: 10px;">
         <select [ngModel]="metodoPagoSeleccionado()" (ngModelChange)="metodoPagoSeleccionado.set($event)" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; flex: 1;">
@@ -746,6 +766,10 @@
           <option value="TARJETA">TARJETA</option>
         </select>
         <input type="number" [ngModel]="montoPagoInput()" (ngModelChange)="montoPagoInput.set($event)" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100px;">
+        @if (metodoPagoSeleccionado() !== 'EFECTIVO') {
+          <input type="text" [ngModel]="referenciaPagoInput()" (ngModelChange)="referenciaPagoInput.set($event)"
+            placeholder="N.° operación" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 130px;">
+        }
         <button type="button" (click)="agregarPago()" style="padding: 8px 15px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">Agregar</button>
       </div>
 
@@ -753,7 +777,10 @@
         <ul style="list-style: none; padding: 0;">
           <li *ngFor="let p of pagosAgregados(); let i = index" style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
             <span>{{ p.metodoPago }}</span>
-            <span>{{ p.monto | currency:'PEN':'symbol' }} <button (click)="removerPago(i)" style="border: none; background: transparent; color: red; cursor: pointer; margin-left: 10px;">&times;</button></span>
+            <span>{{ p.montoRecibido | currency:'PEN':'symbol' }}
+              @if (p.referencia) { <small>({{ p.referencia }})</small> }
+              <button (click)="removerPago(i)" style="border: none; background: transparent; color: red; cursor: pointer; margin-left: 10px;">&times;</button>
+            </span>
           </li>
         </ul>
       </div>

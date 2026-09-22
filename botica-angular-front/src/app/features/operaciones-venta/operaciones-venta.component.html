@@ -1,0 +1,44 @@
+<div class="operations-page">
+  <header>
+    <div><h2>Ventas, devoluciones y recetas</h2><p>Operaciones compensatorias sin borrar el historial.</p></div>
+    <div class="tabs"><button [class.active]="tab() === 'ventas'" (click)="tab.set('ventas')">Devoluciones</button><button [class.active]="tab() === 'recetas'" (click)="tab.set('recetas')">Recetas</button></div>
+  </header>
+  @if (mensaje()) { <div class="notice">{{ mensaje() }}</div> }
+
+  @if (tab() === 'ventas') {
+    <div class="table-card"><table><thead><tr><th>Fecha</th><th>Comprobante</th><th>Cliente</th><th>Total</th><th>Estado</th><th></th></tr></thead><tbody>
+      @for (v of ventas(); track v.idVenta) {
+        <tr [class.selected]="ventaSeleccionada()?.idVenta === v.idVenta"><td>{{ v.fechaEmision | date:'dd/MM/yyyy HH:mm' }}</td><td>{{ v.numeroComprobante }}</td><td>{{ v.cliente }}</td><td>{{ v.total | currency:'PEN':'S/ ' }}</td><td><span class="badge">{{ v.estado }}</span></td><td><button class="link" (click)="seleccionarVenta(v)" [disabled]="v.estado === 'ANULADA' || v.estado === 'DEVUELTA_TOTAL'">Gestionar</button></td></tr>
+      }
+    </tbody></table></div>
+    @if (ventaSeleccionada(); as venta) {
+      <section class="card return-card"><h3>Venta #{{ venta.idVenta }} · {{ venta.numeroComprobante }}</h3>
+        <div class="details">@for (d of venta.detalles; track d.idDetalleVenta) {
+          <label><span><strong>{{ d.producto }}</strong><small>Lote {{ d.lote }} · vendido {{ d.cantidad }} · disponible {{ d.cantidadDisponibleDevolucion }}</small></span><input type="number" min="0" [max]="d.cantidadDisponibleDevolucion" [(ngModel)]="cantidadesDevolucion[d.idDetalleVenta]" [ngModelOptions]="{standalone:true}"></label>
+        }</div>
+        <form [formGroup]="devolucionForm" class="return-form">
+          <label>Motivo<input formControlName="motivo" placeholder="Motivo obligatorio y auditable"></label>
+          <label>Medio de reembolso<select formControlName="metodoReembolso"><option>EFECTIVO</option><option>YAPE</option><option>PLIN</option><option>TARJETA</option></select></label>
+          <label>Referencia<input formControlName="referenciaReembolso" placeholder="Operación/autorización"></label>
+        </form>
+        <div class="actions"><button class="primary" (click)="devolver(false)" [disabled]="procesando()">Registrar devolución</button>@if (esAdmin) { <button class="danger" (click)="devolver(true)" [disabled]="procesando() || venta.estado !== 'PAGADA'">Anular venta completa</button> }</div>
+      </section>
+    }
+  } @else {
+    <div class="recipe-layout">
+      <section class="card"><h3>Nueva receta</h3><form [formGroup]="recetaForm" (ngSubmit)="crearReceta()" class="recipe-form">
+        <label>Número<input formControlName="numero"></label><label>Cliente registrado<select formControlName="idCliente"><option [value]="0">Sin vínculo</option>@for (c of clientes(); track c.idCliente) { <option [value]="c.idCliente">{{ c.nombreRazonSocial }} · {{ c.numeroDocumento }}</option> }</select></label>
+        <label>Paciente<input formControlName="pacienteNombre"></label><label>Documento paciente<input formControlName="pacienteDocumento"></label>
+        <label>Médico<input formControlName="medicoNombre"></label><label>Colegiatura<input formControlName="medicoColegiatura"></label>
+        <label>Emisión<input type="date" formControlName="fechaEmision"></label><label>Vencimiento<input type="date" formControlName="fechaVencimiento"></label>
+        <label>Condición<select formControlName="condicionVenta"><option value="CON_RECETA_MEDICA">CRM-1 · Con receta</option><option value="CON_RECETA_MEDICA_RETENIDA">CRMR-2 · Receta retenida</option></select></label><label>Observaciones<input formControlName="observaciones"></label>
+        <div class="product-picker"><input [formControl]="busquedaProducto" placeholder="Buscar medicamento" (keyup.enter)="buscarProducto()"><button type="button" (click)="buscarProducto()">Buscar</button></div>
+        @if (productos().length) { <div class="search-results">@for (p of productos(); track p.idProducto) { <button type="button" (click)="seleccionarProducto(p)">{{ p.nombre }} · {{ p.condicionVenta }}</button> }</div> }
+        @if (productoReceta()) { <div class="selected-product"><strong>{{ productoReceta()?.nombre }}</strong><label>Cantidad<input type="number" formControlName="cantidadAutorizada"></label><label>Indicaciones<input formControlName="indicaciones"></label><button type="button" (click)="agregarDetalleReceta()">Agregar</button></div> }
+        <div class="recipe-items">@for (d of detallesReceta(); track d.producto.idProducto) { <div><span><strong>{{ d.producto.nombre }}</strong><small>{{ d.cantidadAutorizada }} unidades · {{ d.indicaciones }}</small></span><button type="button" (click)="quitarDetalleReceta(d.producto.idProducto)">×</button></div> }</div>
+        <button class="primary wide" [disabled]="procesando()">Registrar receta</button>
+      </form></section>
+      <section class="card"><h3>Recetas registradas</h3><div class="recipe-list">@for (r of recetas(); track r.idReceta) { <article><div><strong>{{ r.numero }}</strong><span class="badge">{{ r.estado }}</span></div><p>{{ r.pacienteNombre }} · Dr(a). {{ r.medicoNombre }} ({{ r.medicoColegiatura }})</p>@for (d of r.detalles; track d.idRecetaDetalle) { <small>{{ d.producto }}: {{ d.cantidadDisponible }} de {{ d.cantidadAutorizada }} disponibles</small> }</article> }</div></section>
+    </div>
+  }
+</div>

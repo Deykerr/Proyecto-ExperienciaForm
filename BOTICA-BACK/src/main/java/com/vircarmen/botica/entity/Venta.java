@@ -7,7 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "ventas")
+@Table(name = "ventas", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_ventas_idempotency", columnNames = "idempotency_key")
+})
 public class Venta {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,6 +26,16 @@ public class Venta {
 
     @Column(precision = 10, scale = 2, nullable = false)
     private BigDecimal total;
+
+    @Column(name = "idempotency_key", length = 64, unique = true)
+    private String idempotencyKey;
+
+    @Column(name = "referencia_receta", length = 100)
+    private String referenciaReceta;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "receta_id")
+    private Receta receta;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cliente_id")
@@ -64,6 +76,12 @@ public class Venta {
     public void setIgv(BigDecimal igv) { this.igv = igv; }
     public BigDecimal getTotal() { return total; }
     public void setTotal(BigDecimal total) { this.total = total; }
+    public String getIdempotencyKey() { return idempotencyKey; }
+    public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
+    public String getReferenciaReceta() { return referenciaReceta; }
+    public void setReferenciaReceta(String referenciaReceta) { this.referenciaReceta = referenciaReceta; }
+    public Receta getReceta() { return receta; }
+    public void setReceta(Receta receta) { this.receta = receta; }
     public Cliente getCliente() { return cliente; }
     public void setCliente(Cliente cliente) { this.cliente = cliente; }
     public Usuario getUsuario() { return usuario; }

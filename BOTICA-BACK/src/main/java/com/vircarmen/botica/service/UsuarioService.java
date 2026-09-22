@@ -4,6 +4,8 @@ import com.vircarmen.botica.entity.EstadoGeneral;
 import com.vircarmen.botica.entity.Rol;
 import com.vircarmen.botica.entity.Usuario;
 import com.vircarmen.botica.repository.UsuarioRepository;
+import com.vircarmen.botica.exception.BusinessException;
+import com.vircarmen.botica.security.PasswordPolicyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -17,12 +19,14 @@ public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordPolicyService passwordPolicyService;
 
     @Transactional
     public Usuario registrarEmpleado(String username, String passwordPlano, String nombreCompleto, Rol rol) {
         if (usuarioRepository.findByUsername(username).isPresent()) {
-            throw new RuntimeException("El nombre de usuario ya está en uso");
+            throw new BusinessException("El nombre de usuario ya está en uso");
         }
+        passwordPolicyService.validar(passwordPlano);
 
         Usuario nuevoUsuario = new Usuario();
         nuevoUsuario.setUsername(username);
@@ -39,7 +43,7 @@ public class UsuarioService {
 
     public Usuario buscarPorId(Integer idUsuario) {
         return usuarioRepository.findById(Integer.valueOf(idUsuario))
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new BusinessException("Usuario no encontrado"));
     }
 
     @Transactional
@@ -47,6 +51,7 @@ public class UsuarioService {
         Usuario usuario = buscarPorId(idUsuario);
         usuario.setNombreCompleto(nombreCompleto);
         if (passwordPlano != null && !passwordPlano.isBlank()) {
+            passwordPolicyService.validar(passwordPlano);
             usuario.setPasswordHash(passwordEncoder.encode(passwordPlano));
         }
         usuario.setRol(rol);

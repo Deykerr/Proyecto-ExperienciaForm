@@ -1,48 +1,80 @@
 <div class="page-header">
   <div>
-    <h1>Movimientos de Inventario</h1>
-    <p class="text-muted">Gestión de Entradas y Salidas de Almacén.</p>
+    <h1>Kardex e inventario físico</h1>
+    <p class="text-muted">Consulta la trazabilidad y registra el stock contado por lote.</p>
   </div>
 </div>
 
-<div class="glass-panel fade-in" style="max-width: 600px; margin: 0 auto; padding: 2rem;">
-  
-  <div *ngIf="successMessage" class="alert alert-success fade-in" style="margin-bottom: 1.5rem; background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 1rem; border-radius: 8px;">
-    ✅ {{ successMessage }}
-  </div>
-
-  <div *ngIf="errorMessage" class="alert alert-danger fade-in" style="margin-bottom: 1.5rem; background: rgba(239, 68, 68, 0.2); color: #f87171; padding: 1rem; border-radius: 8px;">
-    ❌ {{ errorMessage }}
-  </div>
-
-  <form [formGroup]="movimientoForm" (ngSubmit)="registrarIngreso()">
-    
-    <div class="form-group" style="margin-bottom: 1.5rem;">
-      <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Seleccionar Producto</label>
-      <select formControlName="idProducto" class="input-control">
-        <option value="" disabled>-- Seleccione un Producto --</option>
-        <option *ngFor="let p of productos" [value]="p.id">{{ p.nombre }} (Stock: {{ p.stockActual }})</option>
-      </select>
-    </div>
-
-    <div class="form-row" style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem;">
-      <div class="form-group" style="flex: 1;">
-        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Cantidad a Ingresar</label>
-        <input type="number" formControlName="cantidad" class="input-control" placeholder="Ej. 100">
-      </div>
-
-      <div class="form-group" style="flex: 1;">
-        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Motivo</label>
-        <select formControlName="motivo" class="input-control">
-          <option value="Ingreso Inicial">Ingreso Inicial</option>
-          <option value="Ingreso Extra">Ingreso Extra (Compra)</option>
-          <option value="Devolución">Devolución</option>
+<div class="glass-panel fade-in" style="padding: 2rem; margin-bottom: 2rem;">
+  <h2>Registrar conteo físico</h2>
+  @if (mensaje()) {
+    <p>{{ mensaje() }}</p>
+  }
+  <form [formGroup]="conteoForm" (ngSubmit)="registrarConteo()">
+    <div class="form-row" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+      <div class="form-group" style="flex: 2; min-width: 240px;">
+        <label>Lote</label>
+        <select formControlName="idLote" class="input-control">
+          <option [value]="0" disabled>Seleccione un lote</option>
+          @for (lote of lotes(); track lote.idLote) {
+            <option [value]="lote.idLote">
+              {{ lote.producto }} — {{ lote.codigoLote }} (sistema: {{ lote.stockActual }})
+            </option>
+          }
         </select>
       </div>
+      <div class="form-group">
+        <label>Cantidad contada</label>
+        <input type="number" min="0" formControlName="cantidadContada" class="input-control">
+      </div>
+      <div class="form-group" style="flex: 2;">
+        <label>Motivo</label>
+        <input type="text" formControlName="motivo" class="input-control">
+      </div>
     </div>
-
-    <button type="submit" class="btn btn-primary btn-glow" style="width: 100%; padding: 1rem; font-size: 1.1rem;" [disabled]="movimientoForm.invalid || isSubmitting">
-      {{ isSubmitting ? 'Registrando...' : '📦 Registrar Ingreso de Stock' }}
+    <button type="submit" class="btn btn-primary btn-glow"
+      [disabled]="conteoForm.invalid || isSubmitting()">
+      {{ isSubmitting() ? 'Registrando...' : 'Finalizar conteo' }}
     </button>
   </form>
+</div>
+
+<div class="glass-panel fade-in" style="padding: 2rem; overflow-x: auto;">
+  <h2>Últimos movimientos</h2>
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Tipo</th>
+        <th>Producto</th>
+        <th>Lote</th>
+        <th>Cantidad</th>
+        <th>Saldo lote</th>
+        <th>Usuario</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (movimiento of kardex(); track movimiento.idDetalle) {
+        <tr>
+          <td>{{ movimiento.fecha | date:'short' }}</td>
+          <td>{{ movimiento.tipoMovimiento }}</td>
+          <td>{{ movimiento.producto }}</td>
+          <td>{{ movimiento.codigoLote || '—' }}</td>
+          <td [style.color]="movimiento.cantidad < 0 ? '#ef4444' : '#10b981'">
+            {{ movimiento.cantidad > 0 ? '+' : '' }}{{ movimiento.cantidad }}
+          </td>
+          <td>
+            @if (movimiento.idLote) {
+              {{ movimiento.stockLoteAnterior }} → {{ movimiento.stockLotePosterior }}
+            } @else {
+              Producto: {{ movimiento.stockProductoAnterior }} → {{ movimiento.stockProductoPosterior }}
+            }
+          </td>
+          <td>{{ movimiento.usuario }}</td>
+        </tr>
+      } @empty {
+        <tr><td colspan="7">Todavía no hay movimientos de kardex.</td></tr>
+      }
+    </tbody>
+  </table>
 </div>

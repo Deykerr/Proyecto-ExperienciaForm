@@ -31,11 +31,20 @@ public class DetalleVenta {
     @Column(nullable = false)
     private Integer cantidad;
 
-    @Column(name = "precio_unitario", precision = 10, scale = 2, nullable = false)
+    @Column(name = "precio_unitario", precision = 12, scale = 4, nullable = false)
     private BigDecimal precioUnitario;
 
     @Column(precision = 10, scale = 2, nullable = false)
     private BigDecimal subtotal;
+
+    @Column(name = "base_imponible", precision = 10, scale = 2, nullable = false)
+    private BigDecimal baseImponible;
+
+    @Column(precision = 10, scale = 2, nullable = false)
+    private BigDecimal igv;
+
+    @Column(name = "tipo_afectacion_igv", length = 2, nullable = false)
+    private String tipoAfectacionIgv;
 
     public Integer getIdDetalleVenta() { return idDetalleVenta; }
     public void setIdDetalleVenta(Integer idDetalleVenta) { this.idDetalleVenta = idDetalleVenta; }
@@ -49,4 +58,10 @@ public class DetalleVenta {
     public void setPrecioUnitario(BigDecimal precioUnitario) { this.precioUnitario = precioUnitario; }
     public BigDecimal getSubtotal() { return subtotal; }
     public void setSubtotal(BigDecimal subtotal) { this.subtotal = subtotal; }
+    public BigDecimal getBaseImponible() { return baseImponible; }
+    public void setBaseImponible(BigDecimal baseImponible) { this.baseImponible = baseImponible; }
+    public BigDecimal getIgv() { return igv; }
+    public void setIgv(BigDecimal igv) { this.igv = igv; }
+    public String getTipoAfectacionIgv() { return tipoAfectacionIgv; }
+    public void setTipoAfectacionIgv(String tipoAfectacionIgv) { this.tipoAfectacionIgv = tipoAfectacionIgv; }
 }

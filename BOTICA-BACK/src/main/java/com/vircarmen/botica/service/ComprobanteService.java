@@ -1,31 +1,54 @@
 package com.vircarmen.botica.service;
 
-import com.vircarmen.botica.entity.*;
-import com.vircarmen.botica.repository.ComprobanteRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.vircarmen.botica.entity.Comprobante;
+import com.vircarmen.botica.entity.SerieComprobante;
+import com.vircarmen.botica.entity.TipoComprobante;
+import com.vircarmen.botica.entity.Venta;
+import com.vircarmen.botica.repository.ComprobanteRepository;
+import com.vircarmen.botica.repository.SerieComprobanteRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class ComprobanteService {
     private final ComprobanteRepository comprobanteRepository;
+    private final SerieComprobanteRepository serieRepository;
 
-    public Comprobante generarComprobante(Venta venta, String tipoDoc) {
-        Comprobante comp = new Comprobante();
-        comp.setVenta(venta);
-        comp.setTipoComprobante(TipoComprobante.valueOf(tipoDoc));
-        
-        comp.setSerie(comp.getTipoComprobante() == TipoComprobante.FACTURA ? "F001" : "B001");
-        long count = comprobanteRepository.count();
-        comp.setCorrelativo(String.format("%08d", count + 1));
-        
-        comp.setCliente(venta.getCliente());
-        comp.setSubtotal(venta.getSubtotal());
-        comp.setIgv(venta.getIgv());
-        comp.setTotal(venta.getTotal());
-        comp.setFechaEmision(LocalDateTime.now());
-        
-        return comprobanteRepository.save(comp);
+    @Transactional
+    public Comprobante generarComprobante(Venta venta, TipoComprobante tipo) {
+        String codigoSerie = switch (tipo) {
+            case FACTURA -> "F001";
+            case BOLETA -> "B001";
+            case TICKET -> "T001";
+        };
+
+        SerieComprobante serie = serieRepository.findByTipoComprobanteAndSerie(tipo, codigoSerie)
+                .orElseGet(() -> {
+                    SerieComprobante nueva = new SerieComprobante();
+                    nueva.setTipoComprobante(tipo);
+                    nueva.setSerie(codigoSerie);
+                    nueva.setUltimoCorrelativo(0L);
+                    return serieRepository.saveAndFlush(nueva);
+                });
+        serie.setUltimoCorrelativo(serie.getUltimoCorrelativo() + 1);
+        serieRepository.save(serie);
+
+        Comprobante comprobante = new Comprobante();
+        comprobante.setVenta(venta);
+        comprobante.setTipoComprobante(tipo);
+        comprobante.setSerie(codigoSerie);
+        comprobante.setCorrelativo(String.format("%08d", serie.getUltimoCorrelativo()));
+        comprobante.setCliente(venta.getCliente());
+        comprobante.setSubtotal(venta.getSubtotal());
+        comprobante.setIgv(venta.getIgv());
+        comprobante.setTotal(venta.getTotal());
+        comprobante.setFechaEmision(LocalDateTime.now());
+        return comprobanteRepository.save(comprobante);
     }
 }

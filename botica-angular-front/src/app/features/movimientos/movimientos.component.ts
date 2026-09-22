@@ -1,10 +1,8 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MovimientoService } from '../../core/services/movimiento.service';
-import { ProductoService } from '../../core/services/producto.service';
-import { AuthService } from '../../core/services/auth.service';
-import { Producto } from '../../core/models';
+import { KardexDTO, LoteDTO } from '../../core/models';
 
 @Component({
   selector: 'app-movimientos',
@@ -15,61 +13,48 @@ import { Producto } from '../../core/models';
 })
 export class MovimientosComponent implements OnInit {
   private movimientoService = inject(MovimientoService);
-  private productoService = inject(ProductoService);
-  public authService = inject(AuthService);
   private fb = inject(FormBuilder);
 
-  productos: Producto[] = [];
-  movimientoForm: FormGroup;
-  isSubmitting = false;
-  successMessage = '';
-  errorMessage = '';
+  lotes = signal<LoteDTO[]>([]);
+  kardex = signal<KardexDTO[]>([]);
+  isSubmitting = signal(false);
+  mensaje = signal('');
 
-  constructor() {
-    this.movimientoForm = this.fb.group({
-      idProducto: ['', Validators.required],
-      cantidad: [0, [Validators.required, Validators.min(1)]],
-      motivo: ['Ingreso Inicial', Validators.required]
-    });
-  }
+  conteoForm = this.fb.nonNullable.group({
+    idLote: [0, [Validators.required, Validators.min(1)]],
+    cantidadContada: [0, [Validators.required, Validators.min(0)]],
+    motivo: ['CONTEO FÍSICO', [Validators.required, Validators.maxLength(300)]]
+  });
 
   ngOnInit() {
-    this.cargarProductos();
+    this.cargarDatos();
   }
 
-  cargarProductos() {
-    this.productoService.listar().subscribe({
-      next: (res: any) => {
-        // En Movimientos cargamos todos los productos (incluso los de stock 0)
-        this.productos = res.content ? res.content : res;
-      },
-      error: (err) => console.error('Error cargando productos', err)
-    });
+  cargarDatos() {
+    this.movimientoService.listarLotes().subscribe(lotes => this.lotes.set(lotes));
+    this.movimientoService.listarKardex().subscribe(kardex => this.kardex.set(kardex));
   }
 
-  registrarIngreso() {
-    if (this.movimientoForm.invalid) return;
-
-    this.isSubmitting = true;
-    this.successMessage = '';
-    this.errorMessage = '';
-
-    const { idProducto, cantidad, motivo } = this.movimientoForm.value;
-    const idUsuario = this.authService.getUsuarioId() || 1;
-
-    this.movimientoService.registrarIngreso(idProducto, cantidad, motivo, idUsuario).subscribe({
-      next: (res) => {
-        this.successMessage = res; // "Stock ingresado correctamente"
-        this.isSubmitting = false;
-        this.movimientoForm.reset({ motivo: 'Ingreso Extra' });
-        
-        // Hide message after 3 seconds
-        setTimeout(() => this.successMessage = '', 3000);
+  registrarConteo() {
+    if (this.conteoForm.invalid) {
+      this.conteoForm.markAllAsTouched();
+      return;
+    }
+    const value = this.conteoForm.getRawValue();
+    this.isSubmitting.set(true);
+    this.movimientoService.registrarConteo(
+      value.idLote,
+      value.cantidadContada,
+      value.motivo
+    ).subscribe({
+      next: () => {
+        this.mensaje.set('Conteo finalizado y kardex actualizado.');
+        this.isSubmitting.set(false);
+        this.cargarDatos();
       },
-      error: (err) => {
-        console.error(err);
-        this.errorMessage = 'Hubo un error al registrar el stock.';
-        this.isSubmitting = false;
+      error: () => {
+        this.mensaje.set('No se pudo registrar el conteo.');
+        this.isSubmitting.set(false);
       }
     });
   }

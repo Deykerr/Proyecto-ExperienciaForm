@@ -13,5 +13,11 @@ public record CajaSesionDTO(
     BigDecimal totalIngresos,
     BigDecimal totalEgresos,
     BigDecimal saldoCalculado,
+    BigDecimal ventasEfectivo,
+    BigDecimal ventasYape,
+    BigDecimal ventasPlin,
+    BigDecimal ventasTarjeta,
+    BigDecimal diferencia,
+    Boolean requiereRevision,
     String estado
 ) {}

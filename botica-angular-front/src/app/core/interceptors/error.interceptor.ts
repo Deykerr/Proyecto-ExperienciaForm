@@ -24,7 +24,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
                     case 401:
                         // Token expirado o inválido
                         alertService.warning('Sesión Expirada', 'Por favor, vuelve a iniciar sesión.');
-                        authService.logout();
+                        authService.logout(false);
                         router.navigate(['/login']);
                         break;
                     case 403:
@@ -39,7 +39,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
                         alertService.error('Error de Validación', errorMessage);
                         break;
                     case 500:
-                        alertService.error('Error del Servidor', 'Problema interno en la base de datos.');
+                        alertService.error('Error del Servidor', 'No se pudo completar la operación. Inténtalo nuevamente.');
                         break;
                     default:
                         alertService.error('Error', `Código: ${error.status}`);

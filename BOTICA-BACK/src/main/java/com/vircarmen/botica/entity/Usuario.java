@@ -8,6 +8,7 @@
     import org.springframework.security.core.authority.SimpleGrantedAuthority;
     import org.springframework.security.core.userdetails.UserDetails;
 
+    import com.fasterxml.jackson.annotation.JsonIgnore;
     import com.fasterxml.jackson.annotation.JsonProperty;
 
     import jakarta.persistence.Column;
@@ -43,7 +44,7 @@
         private Rol rol;
 
         @Enumerated(EnumType.STRING)
-        @Column(length = 1)
+        @Column(length = 1, columnDefinition = "varchar(1)")
         private EstadoGeneral estado = EstadoGeneral.A;
 
         @Column(name = "fecha_creacion", updatable = false)
@@ -68,12 +69,14 @@
         // === LA MAGIA DE SPRING SECURITY ===
         
         @Override
+        @JsonIgnore
         public Collection<? extends GrantedAuthority> getAuthorities() {
             // Extraemos tu Enum "ADMIN" y le sumamos "ROLE_" para formar "ROLE_ADMIN" en memoria
             return List.of(new SimpleGrantedAuthority("ROLE_" + this.rol.name()));
         }
 
         @Override
+        @JsonIgnore
         public String getPassword() {
             return this.passwordHash;
         }

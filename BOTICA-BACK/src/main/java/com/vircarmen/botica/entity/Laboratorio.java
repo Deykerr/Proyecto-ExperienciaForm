@@ -17,7 +17,7 @@ public class Laboratorio extends AuditableEntity {
     private String descripcion;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 1)
+    @Column(length = 1, columnDefinition = "varchar(1)")
     private EstadoGeneral estado = EstadoGeneral.A;
 
     public Integer getIdLaboratorio() { return idLaboratorio; }

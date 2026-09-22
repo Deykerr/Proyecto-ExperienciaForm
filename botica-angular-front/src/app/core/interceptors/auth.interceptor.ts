@@ -1,28 +1,22 @@
 import { HttpInterceptorFn } from '@angular/common/http';
-import { inject } from '@angular/core';
-import { AuthService } from '../services/auth.service';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  const metodosSeguros = ['GET', 'HEAD', 'OPTIONS', 'TRACE'];
+  const csrfToken = leerCookie('XSRF-TOKEN');
+  let headers = req.headers;
 
-  const authService = inject(AuthService);
-
-  // El login es público.
-  // NO debemos enviar un JWT existente.
-  if (req.url.includes('/api/auth/login')) {
-    return next(req);
+  if (!metodosSeguros.includes(req.method.toUpperCase()) && csrfToken) {
+    headers = headers.set('X-XSRF-TOKEN', decodeURIComponent(csrfToken));
   }
 
-  const token = authService.getToken();
-
-  if (token) {
-    const clonedReq = req.clone({
-      setHeaders: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-
-    return next(clonedReq);
-  }
-
-  return next(req);
+  return next(req.clone({ withCredentials: true, headers }));
 };
+
+function leerCookie(nombre: string): string | null {
+  const prefijo = `${nombre}=`;
+  const cookie = document.cookie
+    .split(';')
+    .map(valor => valor.trim())
+    .find(valor => valor.startsWith(prefijo));
+  return cookie ? cookie.substring(prefijo.length) : null;
+}

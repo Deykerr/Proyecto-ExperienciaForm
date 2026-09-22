@@ -1,202 +1,240 @@
 package com.vircarmen.botica.config;
 
-import com.vircarmen.botica.entity.*;
-import com.vircarmen.botica.repository.*;
+import com.vircarmen.botica.entity.Categoria;
+import com.vircarmen.botica.entity.Cliente;
+import com.vircarmen.botica.entity.CondicionVenta;
+import com.vircarmen.botica.entity.EstadoLote;
+import com.vircarmen.botica.entity.FormaFarmaceutica;
+import com.vircarmen.botica.entity.Laboratorio;
+import com.vircarmen.botica.entity.Lote;
+import com.vircarmen.botica.entity.Producto;
+import com.vircarmen.botica.entity.Proveedor;
+import com.vircarmen.botica.entity.Rol;
+import com.vircarmen.botica.entity.UnidadMedida;
+import com.vircarmen.botica.entity.Usuario;
+import com.vircarmen.botica.repository.CategoriaRepository;
+import com.vircarmen.botica.repository.ClienteRepository;
+import com.vircarmen.botica.repository.LaboratorioRepository;
+import com.vircarmen.botica.repository.LoteRepository;
+import com.vircarmen.botica.repository.ProductoRepository;
+import com.vircarmen.botica.repository.ProveedorRepository;
+import com.vircarmen.botica.repository.UsuarioRepository;
+import com.vircarmen.botica.security.PasswordPolicyService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Configuration
+@Profile("dev")
+@ConditionalOnProperty(name = "app.demo-data.enabled", havingValue = "true")
 public class DataSeeder {
+
+    private static final Logger LOG = LoggerFactory.getLogger(DataSeeder.class);
 
     @Bean
     public CommandLineRunner initData(
-            UsuarioRepository usuarioRepository, 
-            CategoriaRepository categoriaRepository, 
-            ClienteRepository clienteRepository, 
+            UsuarioRepository usuarioRepository,
+            CategoriaRepository categoriaRepository,
+            ClienteRepository clienteRepository,
             LaboratorioRepository laboratorioRepository,
+            ProveedorRepository proveedorRepository,
             ProductoRepository productoRepository,
             LoteRepository loteRepository,
             PasswordEncoder passwordEncoder,
-            org.springframework.context.ApplicationContext context) {
-            
+            PasswordPolicyService passwordPolicyService,
+            @Value("${app.demo-data.admin-password:}") String adminPassword,
+            @Value("${app.demo-data.cashier-password:}") String cashierPassword,
+            @Value("${app.demo-data.stockkeeper-password:}") String stockkeeperPassword) {
+
         return args -> {
-            if (usuarioRepository.findByUsername("admin").isEmpty()) {
-                Usuario admin = new Usuario();
-                admin.setUsername("admin");
-                admin.setPasswordHash(passwordEncoder.encode("admin123"));
-                admin.setNombreCompleto("Administrador del Sistema");
-                admin.setRol(Rol.ADMIN);
-                usuarioRepository.save(admin);
-                
-                Usuario cajero = new Usuario();
-                cajero.setUsername("cajero");
-                cajero.setPasswordHash(passwordEncoder.encode("caja123"));
-                cajero.setNombreCompleto("Cajero Principal");
-                cajero.setRol(Rol.CAJERO);
-                usuarioRepository.save(cajero);
-                
-                System.out.println("====== USUARIOS CREADOS (admin / cajero) ======");
-            }
-            
-            if (categoriaRepository.count() == 0) {
-                Categoria c1 = new Categoria(); c1.setNombre("Analgsicos");
-                Categoria c2 = new Categoria(); c2.setNombre("Antibticos");
-                Categoria c3 = new Categoria(); c3.setNombre("Vitaminas");
-                categoriaRepository.save(c1);
-                categoriaRepository.save(c2);
-                categoriaRepository.save(c3);
-                System.out.println("====== CATEGORAS CREADAS ======");
-            }
-            
-            if (clienteRepository.count() == 0) {
-                Cliente cli = new Cliente();
-                cli.setTipoDocumento("DNI");
-                cli.setNumeroDocumento("00000000");
-                cli.setNombreRazonSocial("Cliente Pblico General");
-                cli.setDireccion("-");
-                clienteRepository.save(cli);
-                System.out.println("====== CLIENTE DEFAULT CREADO ======");
-            }
-            
-            if (laboratorioRepository.count() == 0) {
-                Laboratorio l1 = new Laboratorio(); l1.setNombre("Bayer"); l1.setDescripcion("Bayer Mxico");
-                Laboratorio l2 = new Laboratorio(); l2.setNombre("Pfizer"); l2.setDescripcion("Pfizer Lab");
-                Laboratorio l3 = new Laboratorio(); l3.setNombre("Genfar"); l3.setDescripcion("Genricos");
-                laboratorioRepository.save(l1);
-                laboratorioRepository.save(l2);
-                laboratorioRepository.save(l3);
-                System.out.println("====== LABORATORIOS CREADOS ======");
-            }
-            
-            if (productoRepository.count() == 0) {
-                Categoria catAnalg = categoriaRepository.findAll().stream().filter(c -> c.getNombre().equals("Analgsicos")).findFirst().orElse(null);
-                Laboratorio labGenfar = laboratorioRepository.findAll().stream().filter(l -> l.getNombre().equals("Genfar")).findFirst().orElse(null);
-                Laboratorio labBayer = laboratorioRepository.findAll().stream().filter(l -> l.getNombre().equals("Bayer")).findFirst().orElse(null);
-                
-                if (catAnalg != null && labGenfar != null && labBayer != null) {
-                    java.util.Random rnd = new java.util.Random();
-                    
-                    for(int i = 1; i <= 100; i++) {
-                        Producto p = new Producto();
-                        p.setNombre("Producto Medicamento " + i + " 500mg");
-                        p.setCodigoBarras("775" + String.format("%010d", i));
-                        p.setPrincipioActivo("Principio Activo " + (i%10));
-                        p.setFormaFarmaceutica(FormaFarmaceutica.TABLETA);
-                        p.setUnidadMedida(UnidadMedida.CAJA);
-                        p.setPrecioVenta(BigDecimal.valueOf(5.0 + (rnd.nextDouble() * 20.0)).setScale(2, java.math.RoundingMode.HALF_UP));
-                        p.setStockActual(100);
-                        p.setStockMinimo(10);
-                        p.setCategoria(i % 2 == 0 ? catAnalg : categoriaRepository.findAll().get(0));
-                        p.setLaboratorio(i % 2 == 0 ? labGenfar : labBayer);
-                        p = productoRepository.save(p);
-                        
-                        // Generar 10 lotes
-                        for(int j = 1; j <= 10; j++) {
-                            Lote lote = new Lote();
-                            lote.setProducto(p);
-                            lote.setCodigoLote("LT-" + i + "-" + String.format("%03d", j));
-                            lote.setFechaIngreso(LocalDate.now().minusDays(rnd.nextInt(60)));
-                            lote.setFechaVencimiento(LocalDate.now().plusMonths(3 + rnd.nextInt(24)));
-                            lote.setStockInicial(10);
-                            lote.setStockActual(10);
-                            lote.setPrecioCompra(p.getPrecioVenta().multiply(new BigDecimal("0.6")));
-                            lote.setEstado(EstadoLote.DISPONIBLE);
-                            loteRepository.save(lote);
-                        }
-                    }
-                    
-                    System.out.println("====== PRODUCTOS Y LOTES CREADOS (100+) ======");
-                }
-            }
+            validarPassword("DEMO_ADMIN_PASSWORD", adminPassword, passwordPolicyService);
+            validarPassword("DEMO_CASHIER_PASSWORD", cashierPassword, passwordPolicyService);
+            validarPassword("DEMO_STOCKKEEPER_PASSWORD", stockkeeperPassword, passwordPolicyService);
 
-            // Inyectar Caja y Ventas si no hay ventas
-            com.vircarmen.botica.repository.CajaSesionRepository cajaSesionRepository = context.getBean(com.vircarmen.botica.repository.CajaSesionRepository.class);
-            com.vircarmen.botica.repository.VentaRepository ventaRepository = context.getBean(com.vircarmen.botica.repository.VentaRepository.class);
-            com.vircarmen.botica.repository.DetalleVentaRepository detalleVentaRepository = context.getBean(com.vircarmen.botica.repository.DetalleVentaRepository.class);
-            com.vircarmen.botica.repository.PagoRepository pagoRepository = context.getBean(com.vircarmen.botica.repository.PagoRepository.class);
+            crearUsuarioSiFalta(usuarioRepository, passwordEncoder, "admin", adminPassword,
+                    "Administrador de Pruebas", Rol.ADMIN);
+            crearUsuarioSiFalta(usuarioRepository, passwordEncoder, "cajero", cashierPassword,
+                    "Cajero de Pruebas", Rol.CAJERO);
+            crearUsuarioSiFalta(usuarioRepository, passwordEncoder, "almacenero", stockkeeperPassword,
+                    "Almacenero de Pruebas", Rol.ALMACENERO);
 
-            if (ventaRepository.count() == 0) {
-                Usuario cajero = usuarioRepository.findByUsername("cajero").orElseThrow();
-                Cliente cliente = clienteRepository.findAll().get(0);
-                
-                // 1. Crear Caja Abierta
-                CajaSesion caja = new CajaSesion();
-                caja.setUsuario(cajero);
-                caja.setMontoInicial(new BigDecimal("100.00"));
-                caja.setFechaApertura(LocalDate.now().atStartOfDay());
-                caja.setEstado(CajaSesion.EstadoCaja.ABIERTA);
-                caja = cajaSesionRepository.save(caja);
+            Categoria analgesicos = obtenerOCrearCategoria(categoriaRepository, "Analgésicos",
+                    "Medicamentos para el alivio del dolor y la fiebre.");
+            Categoria antibioticos = obtenerOCrearCategoria(categoriaRepository, "Antibióticos",
+                    "Medicamentos sujetos a prescripción médica.");
+            Categoria vitaminas = obtenerOCrearCategoria(categoriaRepository, "Vitaminas y suplementos",
+                    "Suplementos nutricionales de venta libre.");
 
-                // 2. Generar 20 Ventas
-                java.util.Random rnd = new java.util.Random();
-                java.util.List<Producto> todosLosProductos = productoRepository.findAll();
-                
-                for (int i = 0; i < 20; i++) {
-                    Venta venta = new Venta();
-                    venta.setCajaSesion(caja);
-                    venta.setUsuario(cajero);
-                    venta.setCliente(cliente);
-                    venta.setFechaEmision(LocalDate.now().atTime(9 + rnd.nextInt(10), rnd.nextInt(60)));
-                    
-                    Comprobante comp = new Comprobante();
-                    comp.setVenta(venta);
-                    comp.setTipoComprobante(com.vircarmen.botica.entity.TipoComprobante.BOLETA);
-                    comp.setSerie("B001");
-                    comp.setCorrelativo(String.format("%06d", i + 1));
-                    comp.setFechaEmision(venta.getFechaEmision());
-                    comp.setCliente(cliente);
-                    
-                    BigDecimal totalVenta = BigDecimal.ZERO;
-                    
-                    // Añadir 1 a 3 detalles por venta
-                    int numDetalles = rnd.nextInt(3) + 1;
-                    for (int j = 0; j < numDetalles; j++) {
-                        Producto p = todosLosProductos.get(rnd.nextInt(todosLosProductos.size()));
-                        int cantidad = rnd.nextInt(3) + 1;
-                        
-                        // Obtener un lote
-                        Lote loteAsignado = loteRepository.findAll().stream().filter(l -> l.getProducto().getIdProducto().equals(p.getIdProducto())).findFirst().orElse(null);
-                        if (loteAsignado == null) continue;
+            Laboratorio genericos = obtenerOCrearLaboratorio(laboratorioRepository, "Genéricos Demo",
+                    "Laboratorio ficticio para pruebas locales.");
+            Laboratorio saludPeru = obtenerOCrearLaboratorio(laboratorioRepository, "Salud Perú Demo",
+                    "Laboratorio ficticio para pruebas locales.");
 
-                        DetalleVenta dv = new DetalleVenta();
-                        dv.setVenta(venta);
-                        dv.setLote(loteAsignado);
-                        dv.setCantidad(cantidad);
-                        dv.setPrecioUnitario(p.getPrecioVenta());
-                        BigDecimal subtotal = p.getPrecioVenta().multiply(new BigDecimal(cantidad));
-                        dv.setSubtotal(subtotal);
-                        venta.getDetalles().add(dv);
-                        
-                        totalVenta = totalVenta.add(subtotal);
-                    }
-                    
-                    venta.setSubtotal(totalVenta.divide(new BigDecimal("1.18"), 2, java.math.RoundingMode.HALF_UP));
-                    venta.setIgv(totalVenta.subtract(venta.getSubtotal()));
-                    venta.setTotal(totalVenta);
-                    
-                    comp.setSubtotal(venta.getSubtotal());
-                    comp.setIgv(venta.getIgv());
-                    comp.setTotal(venta.getTotal());
-                    venta.setComprobante(comp);
-                    
-                    venta = ventaRepository.save(venta);
-                    
-                    Pago pago = new Pago();
-                    pago.setVenta(venta);
-                    pago.setCajaSesion(caja);
-                    pago.setMetodoPago(com.vircarmen.botica.entity.MetodoPago.EFECTIVO);
-                    pago.setMonto(totalVenta);
-                    pago.setFechaPago(venta.getFechaEmision());
-                    pagoRepository.save(pago);
-                }
-                
-                System.out.println("====== CAJA Y VENTAS GENERADAS ======");
-            }
+            crearClientePublicoSiFalta(clienteRepository);
+            crearProveedorSiFalta(proveedorRepository);
+
+            LocalDate hoy = LocalDate.now();
+            crearProductoConLote(productoRepository, loteRepository, analgesicos, genericos,
+                    "Paracetamol 500 mg Demo", "775000000001", "MED-DEMO-001", "Caja x 20 tabletas",
+                    new BigDecimal("8.50"), 60, 10, CondicionVenta.SIN_RECETA_MEDICA,
+                    "L-NORMAL-001", hoy.plusMonths(18));
+            crearProductoConLote(productoRepository, loteRepository, analgesicos, saludPeru,
+                    "Ibuprofeno 400 mg Demo", "775000000002", "MED-DEMO-002", "Caja x 20 tabletas",
+                    new BigDecimal("12.90"), 4, 10, CondicionVenta.SIN_RECETA_MEDICA,
+                    "L-BAJO-001", hoy.plusMonths(10));
+            crearProductoConLote(productoRepository, loteRepository, antibioticos, genericos,
+                    "Amoxicilina 500 mg Demo", "775000000003", "MED-DEMO-003", "Caja x 21 cápsulas",
+                    new BigDecimal("18.50"), 0, 5, CondicionVenta.CON_RECETA_MEDICA,
+                    "L-AGOTADO-001", hoy.plusMonths(12));
+            crearProductoConLote(productoRepository, loteRepository, vitaminas, saludPeru,
+                    "Vitamina C 500 mg Demo", "775000000004", "MED-DEMO-004", "Frasco x 30 tabletas",
+                    new BigDecimal("16.00"), 25, 5, CondicionVenta.SIN_RECETA_MEDICA,
+                    "L-VENCE-005", hoy.plusDays(5));
+            crearProductoConLote(productoRepository, loteRepository, analgesicos, genericos,
+                    "Loratadina 10 mg Demo", "775000000005", "MED-DEMO-005", "Caja x 10 tabletas",
+                    new BigDecimal("7.90"), 12, 5, CondicionVenta.SIN_RECETA_MEDICA,
+                    "L-VENCIDO-001", hoy.minusDays(10));
+            crearProductoConLote(productoRepository, loteRepository, analgesicos, saludPeru,
+                    "Omeprazol 20 mg Demo", "775000000006", "MED-DEMO-006", "Caja x 14 cápsulas",
+                    new BigDecimal("11.50"), 8, 10, CondicionVenta.SIN_RECETA_MEDICA,
+                    "L-VENCE-020", hoy.plusDays(20));
+            crearProductoConLote(productoRepository, loteRepository, analgesicos, genericos,
+                    "Clonazepam 0.5 mg Demo", "775000000007", "MED-DEMO-007", "Caja x 30 tabletas",
+                    new BigDecimal("21.00"), 15, 5, CondicionVenta.CON_RECETA_MEDICA_RETENIDA,
+                    "L-RETENIDA-001", hoy.plusMonths(14));
+
+            LOG.warn("Datos DEMO locales habilitados. No utilices estas cuentas ni este perfil en producción.");
         };
+    }
+
+    private void validarPassword(String variable, String password, PasswordPolicyService passwordPolicyService) {
+        if (password == null || password.isBlank()) {
+            throw new IllegalStateException(variable + " es obligatoria cuando DEMO_DATA_ENABLED=true");
+        }
+        passwordPolicyService.validar(password);
+    }
+
+    private void crearUsuarioSiFalta(UsuarioRepository repository, PasswordEncoder encoder, String username,
+                                     String password, String nombreCompleto, Rol rol) {
+        if (repository.findByUsername(username).isPresent()) {
+            return;
+        }
+        Usuario usuario = new Usuario();
+        usuario.setUsername(username);
+        usuario.setPasswordHash(encoder.encode(password));
+        usuario.setNombreCompleto(nombreCompleto);
+        usuario.setRol(rol);
+        repository.save(usuario);
+    }
+
+    private Categoria obtenerOCrearCategoria(CategoriaRepository repository, String nombre, String descripcion) {
+        return repository.findAll().stream()
+                .filter(categoria -> nombre.equalsIgnoreCase(categoria.getNombre()))
+                .findFirst()
+                .orElseGet(() -> {
+                    Categoria categoria = new Categoria();
+                    categoria.setNombre(nombre);
+                    categoria.setDescripcion(descripcion);
+                    return repository.save(categoria);
+                });
+    }
+
+    private Laboratorio obtenerOCrearLaboratorio(LaboratorioRepository repository, String nombre, String descripcion) {
+        return repository.findAll().stream()
+                .filter(laboratorio -> nombre.equalsIgnoreCase(laboratorio.getNombre()))
+                .findFirst()
+                .orElseGet(() -> {
+                    Laboratorio laboratorio = new Laboratorio();
+                    laboratorio.setNombre(nombre);
+                    laboratorio.setDescripcion(descripcion);
+                    return repository.save(laboratorio);
+                });
+    }
+
+    private void crearClientePublicoSiFalta(ClienteRepository repository) {
+        if (repository.findByNumeroDocumento("00000000").isPresent()) {
+            return;
+        }
+        Cliente cliente = new Cliente();
+        cliente.setTipoDocumento("DNI");
+        cliente.setNumeroDocumento("00000000");
+        cliente.setNombreRazonSocial("Público general - Demo");
+        cliente.setDireccion("Venta de prueba local");
+        repository.save(cliente);
+    }
+
+    private void crearProveedorSiFalta(ProveedorRepository repository) {
+        if (repository.existsByRuc("20600000001")) {
+            return;
+        }
+        Proveedor proveedor = new Proveedor();
+        proveedor.setRuc("20600000001");
+        proveedor.setRazonSocial("Distribuidora Farmacéutica Demo S.A.C.");
+        proveedor.setTelefono("999000001");
+        proveedor.setCorreo("compras@proveedor-demo.local");
+        proveedor.setDireccion("Dirección ficticia para pruebas locales");
+        repository.save(proveedor);
+    }
+
+    private void crearProductoConLote(
+            ProductoRepository productoRepository,
+            LoteRepository loteRepository,
+            Categoria categoria,
+            Laboratorio laboratorio,
+            String nombre,
+            String codigoBarras,
+            String registroSanitario,
+            String presentacion,
+            BigDecimal precioVenta,
+            int stockActual,
+            int stockMinimo,
+            CondicionVenta condicionVenta,
+            String codigoLote,
+            LocalDate fechaVencimiento) {
+
+        if (productoRepository.findByCodigoBarras(codigoBarras).isPresent()) {
+            return;
+        }
+
+        Producto producto = new Producto();
+        producto.setNombre(nombre);
+        producto.setCodigoBarras(codigoBarras);
+        producto.setCodigoSunat("51101500");
+        producto.setTipoAfectacionIgv("10");
+        producto.setPrincipioActivo(nombre.replace(" Demo", ""));
+        producto.setPresentacion(presentacion);
+        producto.setFormaFarmaceutica(FormaFarmaceutica.TABLETA);
+        producto.setUnidadMedida(UnidadMedida.CAJA);
+        producto.setPrecioVenta(precioVenta);
+        producto.setStockActual(stockActual);
+        producto.setStockMinimo(stockMinimo);
+        producto.setUnidadesPorPresentacion(1);
+        producto.setPrecioPresentacion(precioVenta);
+        producto.setCategoria(categoria);
+        producto.setLaboratorio(laboratorio);
+        producto.setCondicionVenta(condicionVenta);
+        producto.setRegistroSanitario(registroSanitario);
+        producto = productoRepository.save(producto);
+
+        Lote lote = new Lote();
+        lote.setProducto(producto);
+        lote.setCodigoLote(codigoLote);
+        lote.setFechaIngreso(LocalDate.now().minusDays(30));
+        lote.setFechaVencimiento(fechaVencimiento);
+        lote.setStockInicial(stockActual);
+        lote.setStockActual(stockActual);
+        lote.setPrecioCompra(precioVenta.multiply(new BigDecimal("0.60")));
+        lote.setEstado(stockActual == 0 ? EstadoLote.AGOTADO
+                : fechaVencimiento.isBefore(LocalDate.now()) ? EstadoLote.VENCIDO : EstadoLote.DISPONIBLE);
+        loteRepository.save(lote);
     }
 }

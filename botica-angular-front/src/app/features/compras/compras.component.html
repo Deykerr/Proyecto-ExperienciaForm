@@ -1,98 +1,72 @@
 <div class="compras-container">
-    <h2>Ingreso de Mercadería (Lotes)</h2>
-    <p class="subtitle">Registra nuevas compras para actualizar el stock</p>
+  <div class="page-header">
+    <div><h2>Compras y recepción</h2><p class="subtitle">Ordena, recibe por lote y devuelve al proveedor con kardex.</p></div>
+    <button class="btn-primary compact" (click)="vista.set(vista() === 'ordenes' ? 'nueva' : 'ordenes')">
+      {{ vista() === 'ordenes' ? '+ Nueva orden' : 'Ver órdenes' }}
+    </button>
+  </div>
+  @if (mensaje()) { <div class="notice">{{ mensaje() }}</div> }
 
+  @if (vista() === 'nueva') {
     <div class="layout-grid">
-
-        <!-- PASO 1: SELECCIONAR PRODUCTO -->
-        <div class="card search-card">
-            <h3>1. Buscar Producto</h3>
-
-            <div class="search-box">
-                <input type="text" [formControl]="searchControl" placeholder="Buscar producto por nombre..."
-                    (keyup.enter)="buscarProducto()">
-                <button type="button" (click)="buscarProducto()">Buscar</button>
-            </div>
-
-            @if (productosEncontrados().length > 0) {
-            <ul class="results-list">
-                @for (prod of productosEncontrados(); track prod.idProducto) {
-                <li (click)="seleccionarProducto(prod)">
-                    <span>{{ prod.nombre }}</span>
-                    <span class="badge-stock">Stock actual: {{ prod.stockActual }}</span>
-                </li>
-                }
-            </ul>
-            }
-
-            @if (productoSeleccionado()) {
-            <div class="selected-product">
-                <h4>Producto a ingresar:</h4>
-                <p class="highlight">{{ productoSeleccionado()?.nombre }}</p>
-                <button class="btn-clear-prod" (click)="productoSeleccionado.set(null)">Cambiar Producto</button>
-            </div>
-            }
-        </div>
-
-        <!-- PASO 2: DATOS DEL LOTE Y COMPRA -->
-        <div class="card form-card">
-            <h3>2. Datos del Ingreso</h3>
-
-            <form [formGroup]="compraForm" (ngSubmit)="registrarIngreso()">
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Proveedor</label>
-                        <select formControlName="proveedorId">
-                            <option value="0" disabled>Seleccione un proveedor...</option>
-                            @for (prov of proveedores(); track prov.idProveedor) {
-                            <option [value]="prov.idProveedor">{{ prov.razonSocial }} ({{ prov.ruc }})</option>
-                            }
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row split">
-                    <div class="form-group">
-                        <label>Código de Lote</label>
-                        <input type="text" formControlName="codigoLote" placeholder="Ej. L-202611">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Fecha de Vencimiento</label>
-                        <input type="date" formControlName="fechaVencimiento">
-                    </div>
-                </div>
-
-                <div class="form-row split">
-                    <div class="form-group" *ngIf="productoSeleccionado()?.unidadesPorPresentacion! > 1">
-                        <label>Paquetes Completos (Cajas/Docenas)</label>
-                        <input type="number" formControlName="cajas">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Unidades Sueltas</label>
-                        <input type="number" formControlName="unidadesSueltas">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Precio Unitario Compra (S/.)</label>
-                        <input type="number" step="0.01" formControlName="precioUnitario">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Motivo</label>
-                    <input type="text" formControlName="motivo">
-                </div>
-
-                <button type="submit" class="btn-primary"
-                    [disabled]="compraForm.invalid || !productoSeleccionado() || isSubmitting()">
-                    {{ isSubmitting() ? 'Guardando...' : '💾 Registrar Ingreso a Almacén' }}
-                </button>
-
+      <div class="card search-card">
+        <h3>Productos de la orden</h3>
+        <div class="search-box"><input [formControl]="searchControl" (keyup.enter)="buscarProducto()" placeholder="Buscar producto"><button (click)="buscarProducto()">Buscar</button></div>
+        @if (productosEncontrados().length) {
+          <ul class="results-list">@for (p of productosEncontrados(); track p.idProducto) { <li (click)="seleccionarProducto(p)"><span>{{ p.nombre }}</span><span>Stock {{ p.stockActual }}</span></li> }</ul>
+        }
+        @if (productoSeleccionado()) {
+          <div class="selected-product"><strong>{{ productoSeleccionado()?.nombre }}</strong>
+            <form [formGroup]="lineaForm" (ngSubmit)="agregarLinea()" class="mini-grid">
+              <label>Cantidad<input type="number" formControlName="cantidad"></label>
+              <label>Costo unitario<input type="number" step="0.01" formControlName="costoUnitario"></label>
+              <button class="btn-primary" type="submit">Agregar</button>
             </form>
-        </div>
-
+          </div>
+        }
+        <div class="line-list">@for (linea of lineas(); track linea.producto.idProducto) {
+          <div><span><strong>{{ linea.producto.nombre }}</strong><small>{{ linea.cantidad }} × S/ {{ linea.costoUnitario }}</small></span><button (click)="quitarLinea(linea.producto.idProducto)">×</button></div>
+        }</div>
+      </div>
+      <div class="card form-card">
+        <h3>Cabecera de orden</h3>
+        <form [formGroup]="ordenForm" (ngSubmit)="crearOrden()">
+          <div class="form-group"><label>Proveedor</label><select formControlName="idProveedor"><option value="0">Seleccione...</option>@for (p of proveedores(); track p.idProveedor) { <option [value]="p.idProveedor">{{ p.razonSocial }}</option> }</select></div>
+          <div class="form-row split"><div class="form-group"><label>N.º orden / documento</label><input formControlName="documento"></div><div class="form-group"><label>Fecha esperada</label><input type="date" formControlName="fechaEsperada"></div></div>
+          <div class="form-group"><label>Observaciones</label><input formControlName="observaciones"></div>
+          <div class="total">Total acordado: <strong>S/ {{ totalOrden().toFixed(2) }}</strong></div>
+          <button class="btn-primary" [disabled]="isSubmitting()">Registrar orden sin afectar stock</button>
+        </form>
+      </div>
     </div>
+  } @else {
+    <div class="card table-card">
+      <table><thead><tr><th>Documento</th><th>Proveedor</th><th>Fecha</th><th>Total</th><th>Estado</th><th></th></tr></thead><tbody>
+        @for (c of compras(); track c.idCompra) { <tr [class.selected]="compraSeleccionada()?.idCompra === c.idCompra"><td>{{ c.documento }}</td><td>{{ c.proveedor }}</td><td>{{ c.fechaCompra | date:'dd/MM/yyyy' }}</td><td>S/ {{ c.total.toFixed(2) }}</td><td><span class="status">{{ c.estado }}</span></td><td><button class="link" (click)="seleccionarCompra(c)">Gestionar</button></td></tr> }
+      </tbody></table>
+    </div>
+
+    @if (compraSeleccionada(); as compra) {
+      <div class="operations-grid">
+        <div class="card form-card"><h3>Recepción de mercadería</h3>
+          <form [formGroup]="recepcionForm" (ngSubmit)="recibir()">
+            <div class="form-group"><label>Producto pendiente</label><select formControlName="idDetalleCompra"><option value="0">Seleccione...</option>@for (d of compra.detalles; track d.idDetalleCompra) { @if (d.cantidadPendiente > 0) { <option [value]="d.idDetalleCompra">{{ d.producto }} · pendiente {{ d.cantidadPendiente }}</option> } }</select></div>
+            <div class="form-row split"><div class="form-group"><label>Cantidad</label><input type="number" formControlName="cantidad"></div><div class="form-group"><label>Lote</label><input formControlName="codigoLote"></div></div>
+            <div class="form-row split"><div class="form-group"><label>Vencimiento</label><input type="date" formControlName="fechaVencimiento"></div><div class="form-group"><label>Documento proveedor</label><input formControlName="documentoProveedor"></div></div>
+            <div class="form-group"><label>Observaciones</label><input formControlName="observaciones"></div>
+            <button class="btn-primary" [disabled]="isSubmitting() || compra.estado === 'RECIBIDA'">Confirmar recepción y aumentar stock</button>
+          </form>
+        </div>
+        <div class="card form-card"><h3>Devolución a proveedor</h3>
+          <form [formGroup]="devolucionForm" (ngSubmit)="devolverProveedor()">
+            <div class="form-group"><label>Producto y lote recibido</label><select formControlName="lineaRecibida"><option value="">Seleccione...</option>@for (linea of lineasRecibidas(); track linea.value) { <option [value]="linea.value">{{ linea.label }}</option> }</select></div>
+            <div class="form-group"><label>Cantidad</label><input type="number" formControlName="cantidad"></div>
+            <div class="form-group"><label>Motivo</label><input formControlName="motivo" placeholder="Daño, vencimiento corto, error..."></div>
+            <div class="form-group"><label>Nota de crédito / referencia</label><input formControlName="documentoReferencia"></div>
+            <button class="btn-primary danger" [disabled]="isSubmitting()">Confirmar salida del lote</button>
+          </form>
+        </div>
+      </div>
+    }
+  }
 </div>

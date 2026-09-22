@@ -69,7 +69,14 @@ public class Producto extends AuditableEntity {
     private Boolean requiereReceta = false;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 1)
+    @Column(name = "condicion_venta", nullable = false, length = 30)
+    private CondicionVenta condicionVenta = CondicionVenta.SIN_RECETA_MEDICA;
+
+    @Column(name = "registro_sanitario", length = 50)
+    private String registroSanitario;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 1, columnDefinition = "varchar(1)")
     private EstadoGeneral estado = EstadoGeneral.A;
 
     @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -109,7 +116,21 @@ public class Producto extends AuditableEntity {
     public Laboratorio getLaboratorio() { return laboratorio; }
     public void setLaboratorio(Laboratorio laboratorio) { this.laboratorio = laboratorio; }
     public Boolean getRequiereReceta() { return requiereReceta; }
-    public void setRequiereReceta(Boolean requiereReceta) { this.requiereReceta = requiereReceta; }
+    public void setRequiereReceta(Boolean requiereReceta) {
+        this.requiereReceta = requiereReceta;
+        if (Boolean.FALSE.equals(requiereReceta)) {
+            this.condicionVenta = CondicionVenta.SIN_RECETA_MEDICA;
+        } else if (this.condicionVenta == CondicionVenta.SIN_RECETA_MEDICA) {
+            this.condicionVenta = CondicionVenta.CON_RECETA_MEDICA;
+        }
+    }
+    public CondicionVenta getCondicionVenta() { return condicionVenta; }
+    public void setCondicionVenta(CondicionVenta condicionVenta) {
+        this.condicionVenta = condicionVenta == null ? CondicionVenta.SIN_RECETA_MEDICA : condicionVenta;
+        this.requiereReceta = this.condicionVenta.requiereReceta();
+    }
+    public String getRegistroSanitario() { return registroSanitario; }
+    public void setRegistroSanitario(String registroSanitario) { this.registroSanitario = registroSanitario; }
     public EstadoGeneral getEstado() { return estado; }
     public void setEstado(EstadoGeneral estado) { this.estado = estado; }
     public List<Lote> getLotes() { return lotes; }

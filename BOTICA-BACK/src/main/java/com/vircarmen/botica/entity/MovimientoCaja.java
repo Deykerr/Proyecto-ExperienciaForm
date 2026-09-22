@@ -33,6 +33,15 @@ public class MovimientoCaja {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
+    @Column(name = "referencia_tipo", length = 30)
+    private String referenciaTipo;
+
+    @Column(name = "referencia_id")
+    private Integer referenciaId;
+
+    @Column(name = "idempotency_key", length = 64, unique = true)
+    private String idempotencyKey;
+
     // Getters and Setters
     public Integer getIdMovimientoCaja() { return idMovimientoCaja; }
     public void setIdMovimientoCaja(Integer idMovimientoCaja) { this.idMovimientoCaja = idMovimientoCaja; }
@@ -48,4 +57,10 @@ public class MovimientoCaja {
     public void setFecha(LocalDateTime fecha) { this.fecha = fecha; }
     public Usuario getUsuario() { return usuario; }
     public void setUsuario(Usuario usuario) { this.usuario = usuario; }
+    public String getReferenciaTipo() { return referenciaTipo; }
+    public void setReferenciaTipo(String referenciaTipo) { this.referenciaTipo = referenciaTipo; }
+    public Integer getReferenciaId() { return referenciaId; }
+    public void setReferenciaId(Integer referenciaId) { this.referenciaId = referenciaId; }
+    public String getIdempotencyKey() { return idempotencyKey; }
+    public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
 }

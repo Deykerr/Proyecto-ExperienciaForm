@@ -11,7 +11,9 @@ export class TicketService {
         total: number,
         cliente: ClienteDTO | null,
         tipoComprobante: string,
-        cajero: string
+        cajero: string,
+        subtotalCalculado: number,
+        igvCalculado: number
     ) {
         // Formatear la fecha actual
         const fecha = new Intl.DateTimeFormat('es-PE', {
@@ -22,8 +24,8 @@ export class TicketService {
         // Identificar al cliente (Si es nulo, es "Cliente Varios")
         const nombreCliente = cliente ? cliente.nombreRazonSocial : 'Cliente Varios';
         const docCliente = cliente ? `${cliente.tipoDocumento}: ${cliente.numeroDocumento}` : 'DNI: 00000000';
-        const subtotal = (total / 1.18).toFixed(2);
-        const igv = (total - (total / 1.18)).toFixed(2);
+        const subtotal = subtotalCalculado.toFixed(2);
+        const igv = igvCalculado.toFixed(2);
 
         // Armar las filas de la tabla de productos
         let filasProductos = '';
@@ -72,7 +74,8 @@ export class TicketService {
           
           <div class="divider"></div>
           
-          <p style="margin: 2px 0;"><strong>${tipoComprobante} DE VENTA ELECTRÓNICA</strong></p>
+          <p style="margin: 2px 0;"><strong>TICKET INTERNO - NO FISCAL</strong></p>
+          <p style="margin: 2px 0;">Tipo solicitado: ${tipoComprobante}</p>
           <p style="margin: 2px 0;">Fecha: ${fecha}</p>
           <p style="margin: 2px 0;">Cajero: ${cajero}</p>
           

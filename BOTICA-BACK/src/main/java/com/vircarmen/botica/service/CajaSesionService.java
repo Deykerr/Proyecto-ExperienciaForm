@@ -1,16 +1,35 @@
 package com.vircarmen.botica.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.vircarmen.botica.dto.ArqueoAprobacionRequest;
 import com.vircarmen.botica.dto.CajaSesionCierreRequest;
 import com.vircarmen.botica.dto.CajaSesionDTO;
 import com.vircarmen.botica.dto.CajaSesionRequest;
+import com.vircarmen.botica.dto.MovimientoCajaRequest;
+import com.vircarmen.botica.entity.ArqueoCaja;
+import com.vircarmen.botica.entity.ArqueoDenominacion;
 import com.vircarmen.botica.entity.CajaSesion;
+import com.vircarmen.botica.entity.EstadoArqueo;
+import com.vircarmen.botica.entity.EstadoPago;
+import com.vircarmen.botica.entity.MetodoPago;
+import com.vircarmen.botica.entity.MovimientoCaja;
+import com.vircarmen.botica.entity.TipoMovimientoCaja;
 import com.vircarmen.botica.entity.Usuario;
+import com.vircarmen.botica.exception.BusinessException;
+import com.vircarmen.botica.repository.ArqueoCajaRepository;
 import com.vircarmen.botica.repository.CajaSesionRepository;
+import com.vircarmen.botica.repository.MovimientoCajaRepository;
 import com.vircarmen.botica.repository.UsuarioRepository;
 import com.vircarmen.botica.security.SecurityUtils;
 
@@ -19,97 +38,221 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class CajaSesionService {
+    private static final List<BigDecimal> DENOMINACIONES_PEN = List.of(
+            new BigDecimal("0.10"), new BigDecimal("0.20"), new BigDecimal("0.50"),
+            new BigDecimal("1.00"), new BigDecimal("2.00"), new BigDecimal("5.00"),
+            new BigDecimal("10.00"), new BigDecimal("20.00"), new BigDecimal("50.00"),
+            new BigDecimal("100.00"), new BigDecimal("200.00"));
 
     private final CajaSesionRepository cajaSesionRepository;
+    private final MovimientoCajaRepository movimientoCajaRepository;
+    private final ArqueoCajaRepository arqueoCajaRepository;
     private final UsuarioRepository usuarioRepository;
+
+    @Value("${app.caja.tolerancia-diferencia:0.00}")
+    private BigDecimal toleranciaDiferencia;
 
     @Transactional
     public CajaSesionDTO abrirCaja(CajaSesionRequest request) {
-        // Obtenemos el ID de forma segura desde el token JWT
         Integer idUsuario = SecurityUtils.getUsuarioAutenticadoId();
-
-        // Verificar que el usuario exista
         Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new com.vircarmen.botica.exception.BusinessException("Usuario no encontrado"));
-
-        // Verificar que el usuario no tenga ya una caja abierta
-        boolean tieneCajaAbierta = cajaSesionRepository.findByUsuarioIdUsuarioAndEstado(idUsuario, CajaSesion.EstadoCaja.ABIERTA).isPresent();
-        if (tieneCajaAbierta) {
-            throw new com.vircarmen.botica.exception.BusinessException("El usuario ya tiene una caja abierta");
+                .orElseThrow(() -> new BusinessException("Usuario no encontrado."));
+        if (cajaSesionRepository.findByUsuarioIdUsuarioAndEstado(idUsuario, CajaSesion.EstadoCaja.ABIERTA).isPresent()) {
+            throw new BusinessException("El usuario ya tiene una caja abierta.");
         }
-
         CajaSesion caja = new CajaSesion();
         caja.setUsuario(usuario);
         caja.setFechaApertura(LocalDateTime.now());
-        caja.setMontoInicial(request.montoInicial());
+        caja.setMontoInicial(request.montoInicial().setScale(2, RoundingMode.HALF_UP));
         caja.setEstado(CajaSesion.EstadoCaja.ABIERTA);
-
         return mapToDTO(cajaSesionRepository.save(caja));
     }
 
     @Transactional
     public CajaSesionDTO cerrarCaja(Integer idCaja, CajaSesionCierreRequest request) {
         Integer idUsuario = SecurityUtils.getUsuarioAutenticadoId();
-        
-        CajaSesion caja = cajaSesionRepository.findById(idCaja)
-                .orElseThrow(() -> new com.vircarmen.botica.exception.BusinessException("Caja no encontrada"));
-
+        CajaSesion caja = cajaSesionRepository.findByIdWithLock(idCaja)
+                .orElseThrow(() -> new BusinessException("Caja no encontrada."));
         if (!caja.getUsuario().getIdUsuario().equals(idUsuario)) {
-            throw new com.vircarmen.botica.exception.BusinessException("No tienes permiso para cerrar una caja de otro usuario");
+            throw new BusinessException("No tienes permiso para cerrar una caja de otro usuario.");
+        }
+        if (caja.getEstado() == CajaSesion.EstadoCaja.CERRADA) {
+            throw new BusinessException("Esta caja ya se encuentra cerrada.");
+        }
+        if (arqueoCajaRepository.findByCajaSesionIdCajaSesion(idCaja).isPresent()) {
+            throw new BusinessException("La caja ya tiene un arqueo registrado.");
         }
 
-        if (caja.getEstado() == CajaSesion.EstadoCaja.CERRADA) {
-            throw new com.vircarmen.botica.exception.BusinessException("Esta caja ya se encuentra cerrada");
+        BigDecimal contadoDenominaciones = calcularDenominaciones(request.denominaciones());
+        BigDecimal contado = contadoDenominaciones != null ? contadoDenominaciones
+                : request.montoFinal() == null ? null : request.montoFinal().setScale(2, RoundingMode.HALF_UP);
+        if (contado == null) {
+            throw new BusinessException("Debe registrar el conteo por denominaciones o el monto final.");
         }
+        if (contadoDenominaciones != null && request.montoFinal() != null
+                && contadoDenominaciones.compareTo(request.montoFinal().setScale(2, RoundingMode.HALF_UP)) != 0) {
+            throw new BusinessException("El monto final no coincide con el conteo por denominaciones.");
+        }
+
+        Resumen resumen = calcularResumen(caja);
+        BigDecimal diferencia = contado.subtract(resumen.saldoEsperado()).setScale(2, RoundingMode.HALF_UP);
+        boolean requiereRevision = diferencia.abs().compareTo(toleranciaDiferencia) > 0;
+        EstadoArqueo estado = diferencia.signum() == 0 ? EstadoArqueo.CUADRADO
+                : diferencia.signum() > 0 ? EstadoArqueo.SOBRANTE : EstadoArqueo.FALTANTE;
+
+        ArqueoCaja arqueo = new ArqueoCaja();
+        arqueo.setCajaSesion(caja);
+        arqueo.setTotalContado(contado);
+        arqueo.setSaldoEsperado(resumen.saldoEsperado());
+        arqueo.setDiferencia(diferencia);
+        arqueo.setEstado(estado);
+        arqueo.setObservaciones(normalizar(request.observaciones()));
+        arqueo.setUsuario(caja.getUsuario());
+        arqueo.setFecha(LocalDateTime.now());
+        if (request.denominaciones() != null) {
+            for (CajaSesionCierreRequest.Denominacion item : request.denominaciones()) {
+                if (item.cantidad() == null || item.cantidad() == 0) continue;
+                ArqueoDenominacion detalle = new ArqueoDenominacion();
+                detalle.setArqueo(arqueo);
+                detalle.setDenominacion(item.denominacion().setScale(2, RoundingMode.HALF_UP));
+                detalle.setCantidad(item.cantidad());
+                detalle.setSubtotal(detalle.getDenominacion().multiply(BigDecimal.valueOf(item.cantidad()))
+                        .setScale(2, RoundingMode.HALF_UP));
+                arqueo.getDenominaciones().add(detalle);
+            }
+        }
+        arqueoCajaRepository.save(arqueo);
 
         caja.setFechaCierre(LocalDateTime.now());
-        caja.setMontoFinal(request.montoFinal());
+        caja.setMontoFinal(contado);
+        caja.setMontoEsperado(resumen.saldoEsperado());
+        caja.setDiferencia(diferencia);
+        caja.setObservacionesCierre(normalizar(request.observaciones()));
+        caja.setRequiereRevision(requiereRevision);
         caja.setEstado(CajaSesion.EstadoCaja.CERRADA);
-
         return mapToDTO(cajaSesionRepository.save(caja));
     }
 
-    public CajaSesionDTO obtenerCajaActual(Integer idUsuario) {
-    idUsuario = SecurityUtils.getUsuarioAutenticadoId();
-
-    return cajaSesionRepository
-            .findByUsuarioIdUsuarioAndEstado(
-                    idUsuario,
-                    CajaSesion.EstadoCaja.ABIERTA
-            )
-            .map(this::mapToDTO)
-            .orElse(null);
-}
-
-    private CajaSesionDTO mapToDTO(CajaSesion c) {
-        java.math.BigDecimal ingresosVentas = c.getPagos().stream()
-                .map(com.vircarmen.botica.entity.Pago::getMonto)
-                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
-                
-        java.math.BigDecimal ingresosMov = c.getMovimientos().stream()
-                .filter(m -> "INGRESO".equals(m.getTipoMovimiento()))
-                .map(com.vircarmen.botica.entity.MovimientoCaja::getMonto)
-                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
-                
-        java.math.BigDecimal egresosMov = c.getMovimientos().stream()
-                .filter(m -> "EGRESO".equals(m.getTipoMovimiento()))
-                .map(com.vircarmen.botica.entity.MovimientoCaja::getMonto)
-                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
-                
-        java.math.BigDecimal totalIngresos = ingresosVentas.add(ingresosMov);
-        java.math.BigDecimal saldoCalculado = c.getMontoInicial().add(totalIngresos).subtract(egresosMov);
-
-        return new CajaSesionDTO(
-                c.getIdCajaSesion(),
-                c.getUsuario().getUsername(), // asumiendo que Usuario tiene getUsername()
-                c.getFechaApertura(),
-                c.getFechaCierre(),
-                c.getMontoInicial(),
-                c.getMontoFinal(),
-                totalIngresos,
-                egresosMov,
-                saldoCalculado,
-                c.getEstado().name()
-        );
+    @Transactional
+    public CajaSesionDTO registrarMovimiento(Integer idCaja, MovimientoCajaRequest request) {
+        MovimientoCaja existente = movimientoCajaRepository.findByIdempotencyKey(request.idempotencyKey().trim()).orElse(null);
+        if (existente != null) return mapToDTO(existente.getCajaSesion());
+        CajaSesion caja = cajaSesionRepository.findByIdWithLock(idCaja)
+                .orElseThrow(() -> new BusinessException("Caja no encontrada."));
+        Integer idUsuario = SecurityUtils.getUsuarioAutenticadoId();
+        if (!caja.getUsuario().getIdUsuario().equals(idUsuario)) {
+            throw new BusinessException("No puedes registrar movimientos en una caja de otro usuario.");
+        }
+        if (caja.getEstado() != CajaSesion.EstadoCaja.ABIERTA) {
+            throw new BusinessException("La caja está cerrada.");
+        }
+        TipoMovimientoCaja tipo;
+        try {
+            tipo = TipoMovimientoCaja.valueOf(request.tipoMovimiento().trim().toUpperCase(Locale.ROOT));
+        } catch (RuntimeException ex) {
+            throw new BusinessException("Tipo de movimiento de caja no válido.");
+        }
+        BigDecimal monto = request.monto().setScale(2, RoundingMode.HALF_UP);
+        if (tipo == TipoMovimientoCaja.EGRESO
+                && monto.compareTo(calcularResumen(caja).saldoEsperado()) > 0) {
+            throw new BusinessException("El egreso supera el efectivo disponible en caja.");
+        }
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new BusinessException("Usuario no encontrado."));
+        MovimientoCaja movimiento = new MovimientoCaja();
+        movimiento.setCajaSesion(caja);
+        movimiento.setTipoMovimiento(tipo);
+        movimiento.setMonto(monto);
+        movimiento.setMotivo(request.motivo().trim());
+        movimiento.setFecha(LocalDateTime.now());
+        movimiento.setUsuario(usuario);
+        movimiento.setReferenciaTipo("MANUAL");
+        movimiento.setIdempotencyKey(request.idempotencyKey().trim());
+        movimientoCajaRepository.save(movimiento);
+        caja.getMovimientos().add(movimiento);
+        return mapToDTO(caja);
     }
+
+    @Transactional
+    public CajaSesionDTO aprobarDiferencia(Integer idCaja, ArqueoAprobacionRequest request) {
+        CajaSesion caja = cajaSesionRepository.findByIdWithLock(idCaja)
+                .orElseThrow(() -> new BusinessException("Caja no encontrada."));
+        if (!Boolean.TRUE.equals(caja.getRequiereRevision())) {
+            throw new BusinessException("El arqueo no requiere aprobación.");
+        }
+        ArqueoCaja arqueo = arqueoCajaRepository.findByCajaSesionIdCajaSesion(idCaja)
+                .orElseThrow(() -> new BusinessException("Arqueo no encontrado."));
+        Usuario aprobador = usuarioRepository.findById(SecurityUtils.getUsuarioAutenticadoId())
+                .orElseThrow(() -> new BusinessException("Usuario no encontrado."));
+        arqueo.setAprobadoPor(aprobador);
+        arqueo.setFechaAprobacion(LocalDateTime.now());
+        arqueo.setObservacionAprobacion(request.observacion().trim());
+        arqueo.setEstado(EstadoArqueo.APROBADO);
+        arqueoCajaRepository.save(arqueo);
+        caja.setRequiereRevision(false);
+        return mapToDTO(cajaSesionRepository.save(caja));
+    }
+
+    @Transactional(readOnly = true)
+    public CajaSesionDTO obtenerCajaActual(Integer ignorado) {
+        return cajaSesionRepository.findByUsuarioIdUsuarioAndEstado(
+                SecurityUtils.getUsuarioAutenticadoId(), CajaSesion.EstadoCaja.ABIERTA)
+                .map(this::mapToDTO).orElse(null);
+    }
+
+    private BigDecimal calcularDenominaciones(List<CajaSesionCierreRequest.Denominacion> items) {
+        if (items == null || items.isEmpty()) return null;
+        Set<BigDecimal> usadas = new HashSet<>();
+        BigDecimal total = BigDecimal.ZERO;
+        for (CajaSesionCierreRequest.Denominacion item : items) {
+            if (item.denominacion() == null || item.cantidad() == null) {
+                throw new BusinessException("Cada denominación requiere valor y cantidad.");
+            }
+            BigDecimal denominacion = item.denominacion().setScale(2, RoundingMode.HALF_UP);
+            boolean valida = DENOMINACIONES_PEN.stream().anyMatch(d -> d.compareTo(denominacion) == 0);
+            if (!valida) throw new BusinessException("Denominación PEN no válida: " + denominacion);
+            if (!usadas.add(denominacion)) throw new BusinessException("Una denominación no puede repetirse.");
+            total = total.add(denominacion.multiply(BigDecimal.valueOf(item.cantidad())));
+        }
+        return total.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private CajaSesionDTO mapToDTO(CajaSesion caja) {
+        Resumen r = calcularResumen(caja);
+        return new CajaSesionDTO(caja.getIdCajaSesion(), caja.getUsuario().getUsername(), caja.getFechaApertura(),
+                caja.getFechaCierre(), caja.getMontoInicial(), caja.getMontoFinal(), r.totalIngresosCaja(),
+                r.egresosCaja(), r.saldoEsperado(), r.efectivo(), r.yape(), r.plin(), r.tarjeta(),
+                caja.getDiferencia(), caja.getRequiereRevision(), caja.getEstado().name());
+    }
+
+    private Resumen calcularResumen(CajaSesion caja) {
+        BigDecimal efectivo = pagos(caja, MetodoPago.EFECTIVO);
+        BigDecimal yape = pagos(caja, MetodoPago.YAPE);
+        BigDecimal plin = pagos(caja, MetodoPago.PLIN);
+        BigDecimal tarjeta = pagos(caja, MetodoPago.TARJETA);
+        BigDecimal ingresos = caja.getMovimientos().stream()
+                .filter(m -> m.getTipoMovimiento() == TipoMovimientoCaja.INGRESO)
+                .map(MovimientoCaja::getMonto).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal egresos = caja.getMovimientos().stream()
+                .filter(m -> m.getTipoMovimiento() == TipoMovimientoCaja.EGRESO)
+                .map(MovimientoCaja::getMonto).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalIngresosCaja = efectivo.add(ingresos);
+        BigDecimal saldo = caja.getMontoInicial().add(totalIngresosCaja).subtract(egresos)
+                .setScale(2, RoundingMode.HALF_UP);
+        return new Resumen(efectivo, yape, plin, tarjeta, totalIngresosCaja, egresos, saldo);
+    }
+
+    private BigDecimal pagos(CajaSesion caja, MetodoPago metodo) {
+        return caja.getPagos().stream()
+                .filter(p -> p.getEstado() == EstadoPago.APROBADO && p.getMetodoPago() == metodo)
+                .map(p -> p.getMonto()).reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private String normalizar(String valor) {
+        return valor == null || valor.isBlank() ? null : valor.trim();
+    }
+
+    private record Resumen(BigDecimal efectivo, BigDecimal yape, BigDecimal plin, BigDecimal tarjeta,
+                           BigDecimal totalIngresosCaja, BigDecimal egresosCaja, BigDecimal saldoEsperado) {}
 }

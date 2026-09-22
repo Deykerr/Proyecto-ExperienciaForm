@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.List;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/productos")
@@ -44,7 +45,7 @@ public class ProductoController {
     // SOLO el Administrador o el Almacenero pueden crear o editar productos
     @PreAuthorize("hasAnyRole('ADMIN', 'ALMACENERO')")
     @PostMapping
-    public ResponseEntity<ProductoDTO> registrarProducto(@RequestBody ProductoRequest request) {
+    public ResponseEntity<ProductoDTO> registrarProducto(@Valid @RequestBody ProductoRequest request) {
         ProductoDTO nuevoProducto = productoService.registrarProducto(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(nuevoProducto);
     }
@@ -56,7 +57,7 @@ public class ProductoController {
     @PutMapping("/{id}")
     public ResponseEntity<ProductoDTO> actualizarProducto(
             @PathVariable Integer id, 
-            @RequestBody ProductoRequest request) {
+            @Valid @RequestBody ProductoRequest request) {
         return ResponseEntity.ok(productoService.actualizarProducto(id, request));
     }
 

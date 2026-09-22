@@ -5,6 +5,10 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 
 import com.vircarmen.botica.entity.Venta;
 
@@ -17,4 +21,10 @@ public interface VentaRepository extends JpaRepository<Venta, Integer> {
 
     // Método añadido: buscar ventas por cliente
     List<Venta> findByClienteIdCliente(Integer idCliente);
+
+    Optional<Venta> findByIdempotencyKey(String idempotencyKey);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT v FROM Venta v WHERE v.idVenta = :id")
+    Optional<Venta> findByIdWithLock(@Param("id") Integer id);
 }

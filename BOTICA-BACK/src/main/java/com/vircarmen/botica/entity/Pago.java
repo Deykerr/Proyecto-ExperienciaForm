@@ -23,6 +23,12 @@ public class Pago {
     @Column(precision = 10, scale = 2, nullable = false)
     private BigDecimal monto;
 
+    @Column(name = "monto_recibido", precision = 10, scale = 2, nullable = false)
+    private BigDecimal montoRecibido;
+
+    @Column(precision = 10, scale = 2, nullable = false)
+    private BigDecimal vuelto = BigDecimal.ZERO;
+
     @Column(nullable = false)
     private LocalDateTime fechaPago = LocalDateTime.now();
 
@@ -47,6 +53,10 @@ public class Pago {
     public void setMetodoPago(MetodoPago metodoPago) { this.metodoPago = metodoPago; }
     public BigDecimal getMonto() { return monto; }
     public void setMonto(BigDecimal monto) { this.monto = monto; }
+    public BigDecimal getMontoRecibido() { return montoRecibido; }
+    public void setMontoRecibido(BigDecimal montoRecibido) { this.montoRecibido = montoRecibido; }
+    public BigDecimal getVuelto() { return vuelto; }
+    public void setVuelto(BigDecimal vuelto) { this.vuelto = vuelto; }
     public LocalDateTime getFechaPago() { return fechaPago; }
     public void setFechaPago(LocalDateTime fechaPago) { this.fechaPago = fechaPago; }
     public String getReferencia() { return referencia; }

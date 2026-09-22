@@ -6,6 +6,7 @@ import {
     CajaSesionDTO,
     CajaSesionRequest,
     CajaSesionCierreRequest
+    , MovimientoCajaRequest
 } from '../models';
 
 import { environment } from '../../../environments/environment';
@@ -36,5 +37,9 @@ export class CajaService {
             `${this.apiUrl}/cerrar/${idCajaSesion}`,
             request
         );
+    }
+
+    registrarMovimiento(idCajaSesion: number, request: MovimientoCajaRequest): Observable<CajaSesionDTO> {
+        return this.http.post<CajaSesionDTO>(`${this.apiUrl}/${idCajaSesion}/movimientos`, request);
     }
 }

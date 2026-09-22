@@ -10,6 +10,7 @@ import {
     ReactiveFormsModule,
     Validators
 } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 
 import { DatePipe } from '@angular/common';
 
@@ -25,6 +26,7 @@ import {
     standalone: true,
     imports: [
         ReactiveFormsModule,
+        FormsModule,
         DatePipe
     ],
     templateUrl: './caja.component.html',
@@ -65,14 +67,21 @@ export class CajaComponent implements OnInit {
     // ==========================================
 
     formCierre = this.fb.nonNullable.group({
-        montoFinal: [
-            0,
-            [
-                Validators.required,
-                Validators.min(0)
-            ]
-        ]
+        observaciones: ['']
     });
+
+    formMovimiento = this.fb.nonNullable.group({
+        tipoMovimiento: ['EGRESO', [Validators.required]],
+        monto: [0, [Validators.required, Validators.min(0.01)]],
+        motivo: ['', [Validators.required, Validators.maxLength(255)]]
+    });
+
+    denominaciones = [200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1]
+        .map(denominacion => ({ denominacion, cantidad: 0 }));
+
+    get totalContado(): number {
+        return Number(this.denominaciones.reduce((total, item) => total + item.denominacion * item.cantidad, 0).toFixed(2));
+    }
 
     // ==========================================
     // INICIO
@@ -169,17 +178,14 @@ export class CajaComponent implements OnInit {
             return;
         }
 
-        if (this.formCierre.invalid) {
-
-            this.formCierre.markAllAsTouched();
-
-            return;
-        }
-
         this.isLoading.set(true);
         this.mensajeError.set('');
 
-        const request = this.formCierre.getRawValue();
+        const request = {
+            montoFinal: this.totalContado,
+            observaciones: this.formCierre.getRawValue().observaciones,
+            denominaciones: this.denominaciones.filter(item => item.cantidad > 0)
+        };
 
         this.cajaService
             .cerrarCaja(
@@ -188,13 +194,16 @@ export class CajaComponent implements OnInit {
             )
             .subscribe({
 
-                next: () => {
+                next: (cerrada) => {
+
+                    const diferencia = cerrada.diferencia || 0;
+                    alert(diferencia === 0 ? 'Caja cerrada y cuadrada.'
+                        : `Caja cerrada con ${diferencia > 0 ? 'sobrante' : 'faltante'} de S/ ${Math.abs(diferencia).toFixed(2)}. Requiere revisión.`);
 
                     this.cajaActiva.set(null);
 
-                    this.formCierre.reset({
-                        montoFinal: 0
-                    });
+                    this.formCierre.reset({ observaciones: '' });
+                    this.denominaciones.forEach(item => item.cantidad = 0);
 
                     this.isLoading.set(false);
                 },
@@ -211,5 +220,30 @@ export class CajaComponent implements OnInit {
                     this.isLoading.set(false);
                 }
             });
+    }
+
+    registrarMovimiento(): void {
+        const caja = this.cajaActiva();
+        if (!caja || this.formMovimiento.invalid) {
+            this.formMovimiento.markAllAsTouched();
+            return;
+        }
+        const raw = this.formMovimiento.getRawValue();
+        this.isLoading.set(true);
+        this.cajaService.registrarMovimiento(caja.idCajaSesion, {
+            ...raw,
+            tipoMovimiento: raw.tipoMovimiento as 'INGRESO' | 'EGRESO',
+            idempotencyKey: crypto.randomUUID()
+        }).subscribe({
+            next: actualizada => {
+                this.cajaActiva.set(actualizada);
+                this.formMovimiento.reset({ tipoMovimiento: 'EGRESO', monto: 0, motivo: '' });
+                this.isLoading.set(false);
+            },
+            error: err => {
+                this.mensajeError.set(err?.error?.message || 'No se pudo registrar el movimiento.');
+                this.isLoading.set(false);
+            }
+        });
     }
 }

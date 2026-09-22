@@ -35,6 +35,15 @@ public class Movimiento {
     @Column(name = "referencia_anulacion")
     private Integer referenciaAnulacion;
 
+    @Column(name = "referencia_tipo", length = 30)
+    private String referenciaTipo;
+
+    @Column(name = "referencia_id")
+    private Integer referenciaId;
+
+    @Column(name = "idempotency_key", length = 64, unique = true)
+    private String idempotencyKey;
+
     public Integer getIdMovimiento() { return idMovimiento; }
     public void setIdMovimiento(Integer idMovimiento) { this.idMovimiento = idMovimiento; }
     public LocalDateTime getFechaMovimiento() { return fechaMovimiento; }
@@ -49,4 +58,10 @@ public class Movimiento {
     public void setMotivo(String motivo) { this.motivo = motivo; }
     public Integer getReferenciaAnulacion() { return referenciaAnulacion; }
     public void setReferenciaAnulacion(Integer referenciaAnulacion) { this.referenciaAnulacion = referenciaAnulacion; }
+    public String getReferenciaTipo() { return referenciaTipo; }
+    public void setReferenciaTipo(String referenciaTipo) { this.referenciaTipo = referenciaTipo; }
+    public Integer getReferenciaId() { return referenciaId; }
+    public void setReferenciaId(Integer referenciaId) { this.referenciaId = referenciaId; }
+    public String getIdempotencyKey() { return idempotencyKey; }
+    public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
 }

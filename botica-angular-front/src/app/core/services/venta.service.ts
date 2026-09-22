@@ -13,7 +13,9 @@ import {
 import {
   ProductoDTO,
   ClienteDTO,
-  VentaRequest
+  VentaRequest,
+  VentaResumenDTO,
+  RecetaDTO
 } from '../models';
 
 import {
@@ -79,11 +81,15 @@ export class VentasService {
 
   registrarVenta(
     venta: VentaRequest
-  ): Observable<any> {
+  ): Observable<VentaResumenDTO> {
 
-    return this.http.post(
+    return this.http.post<VentaResumenDTO>(
       this.apiUrl,
       venta
     );
+  }
+
+  listarRecetas(): Observable<RecetaDTO[]> {
+    return this.http.get<RecetaDTO[]>(`${environment.apiUrl}/recetas`);
   }
 }

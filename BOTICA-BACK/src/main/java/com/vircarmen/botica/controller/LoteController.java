@@ -1,26 +1,29 @@
 package com.vircarmen.botica.controller;
 
-import com.vircarmen.botica.entity.Lote;
-import com.vircarmen.botica.repository.LoteRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.vircarmen.botica.dto.LoteDTO;
+import com.vircarmen.botica.service.LoteService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/lotes")
+@PreAuthorize("hasAnyRole('ADMIN', 'ALMACENERO')")
+@RequiredArgsConstructor
 public class LoteController {
 
-    @Autowired
-    private LoteRepository loteRepository;
+    private final LoteService loteService;
 
     @GetMapping
-    public List<Lote> listarLotes() {
-        return loteRepository.findAll();
+    public ResponseEntity<List<LoteDTO>> listarLotes() {
+        return ResponseEntity.ok(loteService.listarTodos());
     }
     
     @GetMapping("/vencimiento")
-    public List<Lote> listarLotesProximosVencer() {
-        return loteRepository.findLotesProximosAVencer();
+    public ResponseEntity<List<LoteDTO>> listarLotesProximosVencer() {
+        return ResponseEntity.ok(loteService.listarConStockPorVencimiento());
     }
 }

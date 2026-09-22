@@ -5,9 +5,16 @@ import { ProductoService } from '../../core/services/producto.service';
 import { VentaService } from '../../core/services/venta.service';
 import { ClienteService } from '../../core/services/cliente.service';
 import { TicketService } from '../../core/services/ticket.service';
-import { ProductoDTO as Producto, DetalleVentaDTO as DetalleVenta, ClienteDTO as Cliente } from '../../core/models';
+import { ProductoDTO as Producto, ClienteDTO as Cliente, VentaRequest } from '../../core/models';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+
+interface CarritoItem {
+  productoId: number;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
+}
 
 @Component({
   selector: 'app-ventas',
@@ -25,7 +32,7 @@ export class VentasComponent implements OnInit {
   public authService = inject(AuthService);
 
   productos: Producto[] = [];
-  carrito: DetalleVenta[] = [];
+  carrito: CarritoItem[] = [];
   busqueda = '';
   productosFiltrados: Producto[] = [];
   
@@ -42,6 +49,8 @@ export class VentasComponent implements OnInit {
   tipoComprobante = 'BOLETA';
   metodoPago = 'EFECTIVO';
   montoRecibido: number = 0;
+  referenciaPago = '';
+  referenciaReceta = '';
   
   // Modal de Edición de Cliente
   mostrarModalEdicionCliente = false;
@@ -63,13 +72,9 @@ export class VentasComponent implements OnInit {
         this.productosFiltrados = [...this.productos];
       },
       error: () => {
-        // Fallback demo data
-        this.productos = [
-          { id: 1, nombre: 'Paracetamol 500mg', descripcion: 'Analgésico', precioVenta: 5.50, stockActual: 100, stockMinimo: 10, categoriaId: 1, laboratorioId: 1, activo: true },
-          { id: 2, nombre: 'Ibuprofeno 400mg', descripcion: 'Antiinflamatorio', precioVenta: 7.20, stockActual: 50, stockMinimo: 10, categoriaId: 1, laboratorioId: 2, activo: true },
-          { id: 3, nombre: 'Amoxicilina 500mg', descripcion: 'Antibiótico', precioVenta: 12.00, stockActual: 30, stockMinimo: 10, categoriaId: 2, laboratorioId: 1, activo: true }
-        ];
-        this.productosFiltrados = [...this.productos];
+        this.productos = [];
+        this.productosFiltrados = [];
+        alert('No se pudo cargar el catálogo. Verifica la conexión con el servidor.');
       }
     });
   }
@@ -122,15 +127,16 @@ export class VentasComponent implements OnInit {
   }
 
   agregarAlCarrito(prod: Producto) {
-    const existe = this.carrito.find(item => item.productoId === prod.id);
+    const existe = this.carrito.find(item => item.productoId === prod.idProducto);
     if (existe) {
       if (existe.cantidad < prod.stockActual) {
         existe.cantidad++;
-        existe.subtotal = existe.cantidad * existe.precioUnitario;
+        existe.subtotal = this.calcularTotalProducto(prod, existe.cantidad);
+        existe.precioUnitario = existe.subtotal / existe.cantidad;
       }
     } else {
       this.carrito.push({
-        productoId: prod.id!,
+        productoId: prod.idProducto,
         cantidad: 1,
         precioUnitario: prod.precioVenta,
         subtotal: prod.precioVenta
@@ -142,17 +148,25 @@ export class VentasComponent implements OnInit {
     this.carrito.splice(index, 1);
   }
 
-  aumentarCantidad(item: DetalleVenta, prodStock: number) {
+  aumentarCantidad(item: CarritoItem, prodStock: number) {
     if (item.cantidad < prodStock) {
       item.cantidad++;
-      item.subtotal = item.cantidad * item.precioUnitario;
+      const producto = this.getProducto(item.productoId);
+      if (producto) {
+        item.subtotal = this.calcularTotalProducto(producto, item.cantidad);
+        item.precioUnitario = item.subtotal / item.cantidad;
+      }
     }
   }
 
-  disminuirCantidad(item: DetalleVenta, index: number) {
+  disminuirCantidad(item: CarritoItem, index: number) {
     if (item.cantidad > 1) {
       item.cantidad--;
-      item.subtotal = item.cantidad * item.precioUnitario;
+      const producto = this.getProducto(item.productoId);
+      if (producto) {
+        item.subtotal = this.calcularTotalProducto(producto, item.cantidad);
+        item.precioUnitario = item.subtotal / item.cantidad;
+      }
     } else {
       this.removerDelCarrito(index);
     }
@@ -163,12 +177,38 @@ export class VentasComponent implements OnInit {
   }
 
   getProducto(id: number): Producto | undefined {
-    return this.productos.find(p => p.id === id);
+    return this.productos.find(p => p.idProducto === id);
+  }
+
+  get requiereReceta(): boolean {
+    return this.carrito.some(item => Boolean(this.getProducto(item.productoId)?.requiereReceta));
+  }
+
+  private calcularTotalProducto(producto: Producto, cantidad: number): number {
+    const unidades = producto.unidadesPorPresentacion || 1;
+    if (unidades > 1 && producto.precioPresentacion) {
+      const presentaciones = Math.floor(cantidad / unidades);
+      const sueltas = cantidad % unidades;
+      return Number((presentaciones * producto.precioPresentacion + sueltas * producto.precioVenta).toFixed(2));
+    }
+    return Number((cantidad * producto.precioVenta).toFixed(2));
+  }
+
+  get subtotalVenta(): number {
+    return Number(this.carrito.reduce((suma, item) => {
+      const producto = this.getProducto(item.productoId);
+      return suma + (producto?.tipoAfectacionIgv === '10' ? item.subtotal / 1.18 : item.subtotal);
+    }, 0).toFixed(2));
+  }
+
+  get igvVenta(): number {
+    return Number((this.totalVenta - this.subtotalVenta).toFixed(2));
   }
 
   abrirModalPago() {
     if (this.carrito.length === 0 || !this.clienteSeleccionado) return;
     this.montoRecibido = this.totalVenta;
+    this.referenciaPago = '';
     this.mostrarModalPago = true;
   }
 
@@ -188,14 +228,24 @@ export class VentasComponent implements OnInit {
       alert('El monto recibido es menor al total de la venta.');
       return;
     }
+    if (this.metodoPago !== 'EFECTIVO' && !this.referenciaPago.trim()) {
+      alert('Ingresa la referencia de la operación electrónica.');
+      return;
+    }
+    if (this.requiereReceta && !this.referenciaReceta.trim()) {
+      alert('Esta venta incluye productos que requieren receta. Ingresa su referencia.');
+      return;
+    }
 
     this.isProcessing = true;
     this.ventaSuccess = false;
 
     // Build the DTO
-    const nuevaVenta = {
+    const nuevaVenta: VentaRequest = {
       idCliente: this.clienteSeleccionado.idCliente,
       tipoComprobante: this.tipoComprobante,
+      idempotencyKey: crypto.randomUUID(),
+      referenciaReceta: this.referenciaReceta.trim() || undefined,
       items: this.carrito.map(c => ({
         idProducto: c.productoId,
         cantidad: c.cantidad
@@ -203,7 +253,8 @@ export class VentasComponent implements OnInit {
       pagos: [
         {
           metodoPago: this.metodoPago,
-          monto: this.totalVenta // El monto real aplicado a la venta, el vuelto no se envía
+          montoRecibido: this.metodoPago === 'EFECTIVO' ? this.montoRecibido : this.totalVenta,
+          referencia: this.metodoPago === 'EFECTIVO' ? undefined : this.referenciaPago.trim()
         }
       ]
     };
@@ -247,10 +298,13 @@ export class VentasComponent implements OnInit {
       this.totalVenta,
       this.clienteSeleccionado,
       this.tipoComprobante,
-      username
+      username,
+      this.subtotalVenta,
+      this.igvVenta
     );
 
     this.carrito = [];
+    this.referenciaReceta = '';
     this.removerCliente(); // Limpiar el cliente para la siguiente venta
     
     // Esconder mensaje después de 3 seg

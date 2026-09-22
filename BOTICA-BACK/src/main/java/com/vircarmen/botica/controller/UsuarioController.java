@@ -3,13 +3,12 @@ package com.vircarmen.botica.controller;
 import com.vircarmen.botica.entity.EstadoGeneral;
 import com.vircarmen.botica.entity.Rol;
 import com.vircarmen.botica.entity.Usuario;
+import com.vircarmen.botica.dto.UsuarioDTO;
 import com.vircarmen.botica.repository.RolRepository;
-import com.vircarmen.botica.repository.UsuarioRepository;
 import com.vircarmen.botica.service.UsuarioService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,72 +16,46 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/usuarios")
+@PreAuthorize("hasRole('ADMIN')")
 public class UsuarioController {
-
-    @Autowired
-    private UsuarioRepository usuarioRepository;
 
     @Autowired
     private RolRepository rolRepository;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
     private UsuarioService usuarioService;
 
     @GetMapping
-    public List<Usuario> listarUsuarios() {
-        return usuarioRepository.findAll();
+    public List<UsuarioDTO> listarUsuarios() {
+        return usuarioService.listarUsuarios().stream().map(this::mapToDTO).toList();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Usuario> obtenerUsuario(@PathVariable Integer id) {
-        return usuarioRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<UsuarioDTO> obtenerUsuario(@PathVariable Integer id) {
+        return ResponseEntity.ok(mapToDTO(usuarioService.buscarPorId(id)));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<?> crearUsuario(@RequestBody Map<String, Object> datos) {
+    public ResponseEntity<UsuarioDTO> crearUsuario(@RequestBody Map<String, Object> datos) {
         String username = (String) datos.get("username");
-        if (usuarioRepository.findByUsername(username).isPresent()) {
-            return ResponseEntity.badRequest().body("Usuario ya existe");
-        }
-        Usuario u = new Usuario();
-        u.setNombreCompleto((String) datos.get("nombreCompleto"));
-        u.setUsername(username);
-        u.setPasswordHash(passwordEncoder.encode((String) datos.get("password")));
-        
-        if (datos.containsKey("rol")) {
-            u.setRol(Rol.valueOf(String.valueOf(datos.get("rol")).toUpperCase()));
-        } else if (datos.containsKey("rolId")) {
-            Integer rolId = (Integer) datos.get("rolId");
-            Rol rol = rolRepository.findById(rolId).orElseThrow();
-            u.setRol(rol);
-        }
-        
-        return ResponseEntity.ok(usuarioRepository.save(u));
+        String password = (String) datos.get("password");
+        Rol rol = obtenerRol(datos);
+        Usuario creado = usuarioService.registrarEmpleado(
+                username, password, (String) datos.get("nombreCompleto"), rol);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(mapToDTO(creado));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
-    public ResponseEntity<?> actualizarUsuario(@PathVariable Integer id, @RequestBody Map<String, Object> datos) {
-        return usuarioRepository.findById(id).map(u -> {
-            u.setNombreCompleto((String) datos.get("nombreCompleto"));
-            if (datos.containsKey("password") && datos.get("password") != null && !((String)datos.get("password")).isEmpty()) {
-                u.setPasswordHash(passwordEncoder.encode((String) datos.get("password")));
-            }
-            if (datos.containsKey("rol")) {
-                u.setRol(Rol.valueOf(String.valueOf(datos.get("rol")).toUpperCase()));
-            } else if (datos.containsKey("rolId")) {
-                Integer rolId = (Integer) datos.get("rolId");
-                Rol rol = rolRepository.findById(rolId).orElseThrow();
-                u.setRol(rol);
-            }
-            return ResponseEntity.ok(usuarioRepository.save(u));
-        }).orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<UsuarioDTO> actualizarUsuario(@PathVariable Integer id, @RequestBody Map<String, Object> datos) {
+        String password = datos.get("password") instanceof String valor ? valor : null;
+        Usuario actualizado = usuarioService.actualizarUsuario(
+                id,
+                (String) datos.get("nombreCompleto"),
+                password,
+                obtenerRol(datos));
+        return ResponseEntity.ok(mapToDTO(actualizado));
     }
 
     @GetMapping("/roles")
@@ -99,5 +72,25 @@ public class UsuarioController {
         
         usuarioService.cambiarEstadoUsuario(id, estado);
         return ResponseEntity.ok("Acceso del usuario modificado a: " + estado.name());
+    }
+
+    private Rol obtenerRol(Map<String, Object> datos) {
+        if (datos.containsKey("rol")) {
+            return Rol.valueOf(String.valueOf(datos.get("rol")).toUpperCase());
+        }
+        if (datos.get("rolId") instanceof Number rolId) {
+            return rolRepository.findById(rolId.intValue())
+                    .orElseThrow(() -> new com.vircarmen.botica.exception.BusinessException("Rol no válido"));
+        }
+        throw new com.vircarmen.botica.exception.BusinessException("El rol es obligatorio");
+    }
+
+    private UsuarioDTO mapToDTO(Usuario usuario) {
+        return new UsuarioDTO(
+                usuario.getIdUsuario(),
+                usuario.getNombreCompleto(),
+                usuario.getUsername(),
+                usuario.getRol(),
+                usuario.getEstado());
     }
 }

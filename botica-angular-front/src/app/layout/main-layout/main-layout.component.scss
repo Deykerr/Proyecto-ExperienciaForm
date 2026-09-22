@@ -366,6 +366,19 @@
     transform 0.2s ease;
 }
 
+.nav-badge {
+  margin-left: auto;
+  min-width: 23px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #dc4d4d;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: center;
+}
+
 
 // ======================================================
 // FOOTER SIDEBAR
@@ -645,6 +658,39 @@
   color: var(--danger);
 }
 
+.notification-button {
+  position: relative;
+  width: 39px;
+  height: 39px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #f1f7f5;
+  color: var(--text);
+  font-size: 17px;
+  text-decoration: none;
+}
+
+.notification-button:hover {
+  background: var(--primary-light);
+}
+
+.notification-button strong {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  min-width: 19px;
+  padding: 3px 5px;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #ffffff;
+  font-size: 8px;
+  line-height: 1;
+  text-align: center;
+}
+
 
 // ======================================================
 // CONTENT
@@ -712,6 +758,14 @@
 
   .nav-icon {
     margin: 0;
+  }
+
+  .nav-badge {
+    position: absolute;
+    top: 2px;
+    right: 3px;
+    min-width: 18px;
+    padding: 2px 4px;
   }
 
   .logout-button {

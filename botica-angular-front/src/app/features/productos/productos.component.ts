@@ -27,12 +27,14 @@ export class ProductosComponent implements OnInit {
     codigoBarras: ['', [Validators.required]],
     codigoSunat: [''],
     tipoAfectacionIgv: ['10', [Validators.required]], // 10 = Gravado por defecto
-    precioCompra: [0, [Validators.required, Validators.min(0)]],
     precioVenta: [0, [Validators.required, Validators.min(0)]],
     stockMinimo: [5, [Validators.required, Validators.min(1)]],
     idCategoria: [0, [Validators.required, Validators.min(1)]],
     unidadesPorPresentacion: [1, [Validators.required, Validators.min(1)]],
-    precioPresentacion: [0, [Validators.min(0)]]
+    precioPresentacion: [0, [Validators.min(0)]],
+    requiereReceta: [false],
+    condicionVenta: ['SIN_RECETA_MEDICA', [Validators.required]],
+    registroSanitario: ['']
   });
 
   ngOnInit() {
@@ -54,7 +56,8 @@ export class ProductosComponent implements OnInit {
   }
 
   abrirFormulario() {
-    this.productoForm.reset({ tipoAfectacionIgv: '10', stockMinimo: 5, unidadesPorPresentacion: 1, precioPresentacion: 0 });
+    this.productoForm.reset({ tipoAfectacionIgv: '10', stockMinimo: 5, unidadesPorPresentacion: 1,
+      precioPresentacion: 0, requiereReceta: false, condicionVenta: 'SIN_RECETA_MEDICA', registroSanitario: '' });
     this.mostrandoFormulario.set(true);
   }
 
@@ -65,7 +68,11 @@ export class ProductosComponent implements OnInit {
   guardarProducto() {
     if (this.productoForm.valid) {
       this.isSubmitting.set(true);
-      const request = this.productoForm.getRawValue() as ProductoRequest;
+      const raw = this.productoForm.getRawValue();
+      const request = {
+        ...raw,
+        requiereReceta: raw.condicionVenta !== 'SIN_RECETA_MEDICA'
+      } as ProductoRequest;
 
       this.productosService.crearProducto(request).subscribe({
         next: () => {

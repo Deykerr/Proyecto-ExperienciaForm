@@ -1,17 +1,19 @@
-    package com.vircarmen.botica.dto;
+package com.vircarmen.botica.dto;
 
-    public class AjusteInventarioRequest {
-        private Integer idLote;
-        private Integer cantidad;
-        private String motivo;
-        private Integer idUsuario;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 
-        public Integer getIdLote() { return idLote; }
-        public void setIdLote(Integer idLote) { this.idLote = idLote; }
-        public Integer getCantidad() { return cantidad; }
-        public void setCantidad(Integer cantidad) { this.cantidad = cantidad; }
-        public String getMotivo() { return motivo; }
-        public void setMotivo(String motivo) { this.motivo = motivo; }
-        public Integer getIdUsuario() { return idUsuario; }
-        public void setIdUsuario(Integer idUsuario) { this.idUsuario = idUsuario; }
-    }
+public record AjusteInventarioRequest(
+        @NotNull(message = "El lote es obligatorio")
+        Integer idLote,
+
+        @NotNull(message = "La cantidad contada es obligatoria")
+        @PositiveOrZero(message = "La cantidad contada no puede ser negativa")
+        Integer cantidadContada,
+
+        @NotBlank(message = "El motivo es obligatorio")
+        @Size(max = 300, message = "El motivo no puede superar 300 caracteres")
+        String motivo
+) {}

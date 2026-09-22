@@ -39,6 +39,11 @@
           <span class="nav-label">Caja</span>
         </a>
 
+        <a routerLink="/dashboard/operaciones-venta" routerLinkActive="active" class="nav-item" (click)="navegarYcerrar()">
+          <span class="nav-icon">↩️</span>
+          <span class="nav-label">Devoluciones / Recetas</span>
+        </a>
+
         <a routerLink="/dashboard/clientes" routerLinkActive="active" class="nav-item" (click)="navegarYcerrar()">
           <span class="nav-icon">👥</span>
           <span class="nav-label">Clientes</span>
@@ -51,7 +56,20 @@
 
         <a routerLink="/dashboard/compras" routerLinkActive="active" class="nav-item" (click)="navegarYcerrar()">
           <span class="nav-icon">📦</span>
-          <span class="nav-label">Ingreso / Compras</span>
+          <span class="nav-label">Compras / Recepción</span>
+        </a>
+
+        <a routerLink="/dashboard/inventario" routerLinkActive="active" class="nav-item" (click)="navegarYcerrar()">
+          <span class="nav-icon">📋</span>
+          <span class="nav-label">Kardex / Conteos</span>
+        </a>
+
+        <a routerLink="/dashboard/alertas" routerLinkActive="active" class="nav-item" (click)="navegarYcerrar()">
+          <span class="nav-icon">🔔</span>
+          <span class="nav-label">Alertas de inventario</span>
+          @if (alertasPendientes() > 0) {
+            <span class="nav-badge">{{ alertasPendientes() > 99 ? '99+' : alertasPendientes() }}</span>
+          }
         </a>
 
         <a routerLink="/dashboard/productos" routerLinkActive="active" class="nav-item" (click)="navegarYcerrar()">
@@ -88,6 +106,11 @@
           <span class="nav-icon">📊</span>
           <span class="nav-label">Reportes</span>
         </a>
+
+        <a routerLink="/dashboard/cumplimiento" routerLinkActive="active" class="nav-item" (click)="navegarYcerrar()">
+          <span class="nav-icon">🧾</span>
+          <span class="nav-label">SUNAT / DIGEMID</span>
+        </a>
       </div>
     </nav>
 
@@ -117,6 +140,14 @@
       </div>
 
       <div class="topbar-right">
+        @if (hasRole(['ADMIN', 'ALMACENERO'])) {
+          <a routerLink="/dashboard/alertas" class="notification-button" title="Ver alertas de inventario" aria-label="Ver alertas de inventario">
+            <span>🔔</span>
+            @if (alertasPendientes() > 0) {
+              <strong>{{ alertasPendientes() > 99 ? '99+' : alertasPendientes() }}</strong>
+            }
+          </a>
+        }
         <div class="topbar-date">
           <span class="date-icon">🕒</span>
           <span>Panel {{ usuario()?.rol }}</span>

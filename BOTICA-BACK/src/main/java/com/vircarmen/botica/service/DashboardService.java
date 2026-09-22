@@ -14,10 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -49,13 +46,11 @@ public class DashboardService {
     @Transactional(readOnly = true)
     public List<BajoStockDTO> obtenerBajoStock() {
         // Encontrar productos cuyo stockActual <= stockMinimo
-        List<Producto> productos = productoRepository.findAll().stream()
-                .filter(p -> p.getStockActual() <= p.getStockMinimo())
-                .collect(Collectors.toList());
+        List<Producto> productos = productoRepository.findProductosConStockBajo();
                 
         return productos.stream()
                 .map(p -> new BajoStockDTO(p.getCodigoBarras(), p.getNombre(), p.getStockActual(), p.getStockMinimo()))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -63,13 +58,12 @@ public class DashboardService {
         // Encontrar lotes que venzan en los proximos 90 dias
         LocalDate limite = LocalDate.now().plusDays(90);
         
-        List<Lote> lotes = loteRepository.findAll().stream()
-                .filter(l -> l.getFechaVencimiento().isBefore(limite) || l.getFechaVencimiento().isEqual(limite))
-                .filter(l -> l.getStockActual() > 0)
-                .collect(Collectors.toList());
+        List<Lote> lotes = loteRepository.findLotesConStockHastaFecha(limite).stream()
+                .filter(l -> !l.getFechaVencimiento().isBefore(LocalDate.now()))
+                .toList();
                 
         return lotes.stream()
                 .map(l -> new LoteVencerDTO(l.getCodigoLote(), l.getProducto().getNombre(), l.getFechaVencimiento().toString(), l.getStockActual()))
-                .collect(Collectors.toList());
+                .toList();
     }
 }

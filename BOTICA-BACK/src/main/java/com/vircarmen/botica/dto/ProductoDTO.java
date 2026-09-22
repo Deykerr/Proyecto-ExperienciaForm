@@ -12,5 +12,10 @@ public record ProductoDTO(
         Boolean activo,
         String nombreCategoria,
         Integer unidadesPorPresentacion,
-        BigDecimal precioPresentacion
+        BigDecimal precioPresentacion,
+        String tipoAfectacionIgv,
+        Boolean requiereReceta,
+        String condicionVenta,
+        String codigoCondicionVentaDigemid,
+        String registroSanitario
 ) {}

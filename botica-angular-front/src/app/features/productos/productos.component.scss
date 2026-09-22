@@ -242,6 +242,16 @@ $shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
           flex: 2;
         }
 
+        &.split-2 {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 1rem;
+
+          @media (max-width: 768px) {
+            grid-template-columns: 1fr;
+          }
+        }
+
         // Fila dividida en 3 columnas
         &.split-3 {
           display: grid;

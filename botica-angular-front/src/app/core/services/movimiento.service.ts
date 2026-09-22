@@ -1,23 +1,31 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { KardexDTO, LoteDTO, Page } from '../models';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class MovimientoService {
   private http = inject(HttpClient);
-  private apiUrl = `${environment.apiUrl}/movimientos`;
+  private inventarioUrl = `${environment.apiUrl}/inventario`;
+  private lotesUrl = `${environment.apiUrl}/lotes`;
 
-  registrarIngreso(idProducto: number, cantidad: number, motivo: string, idUsuario: number): Observable<any> {
-    const params = new HttpParams()
-      .set('idProducto', idProducto.toString())
-      .set('cantidad', cantidad.toString())
-      .set('motivo', motivo)
-      .set('idUsuario', idUsuario.toString());
+  listarKardex(productoId?: number, loteId?: number): Observable<KardexDTO[]> {
+    let params = new HttpParams().set('page', '0').set('size', '100');
+    if (productoId) params = params.set('productoId', productoId);
+    if (loteId) params = params.set('loteId', loteId);
+    return this.http.get<Page<KardexDTO>>(`${this.inventarioUrl}/kardex`, { params })
+      .pipe(map(response => response.content ?? []));
+  }
 
-    // backend returns a String, we need responseType: 'text' to avoid JSON parse errors
-    return this.http.post(`${this.apiUrl}/ingreso`, null, { params, responseType: 'text' });
+  listarLotes(): Observable<LoteDTO[]> {
+    return this.http.get<LoteDTO[]>(this.lotesUrl);
+  }
+
+  registrarConteo(idLote: number, cantidadContada: number, motivo: string): Observable<any> {
+    return this.http.post(`${this.inventarioUrl}/conteos`, {
+      motivo,
+      items: [{ idLote, cantidadContada }]
+    });
   }
 }

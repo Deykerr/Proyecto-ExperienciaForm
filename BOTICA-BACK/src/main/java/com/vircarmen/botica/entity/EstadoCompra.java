@@ -1,5 +1,5 @@
 package com.vircarmen.botica.entity;
 
 public enum EstadoCompra {
-    REGISTRADA, ANULADA
+    PENDIENTE_RECEPCION, RECIBIDA_PARCIAL, RECIBIDA, ANULADA
 }

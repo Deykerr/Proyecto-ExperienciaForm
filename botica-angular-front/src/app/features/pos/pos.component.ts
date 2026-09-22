@@ -37,6 +37,7 @@ import {
     ProductoDTO,
     ClienteDTO,
     VentaRequest
+    , RecetaDTO
 } from '../../core/models';
 
 
@@ -128,17 +129,15 @@ export class PosComponent {
 
 
     subtotalVenta = computed(() => {
-
-        return this.totalVenta() / 1.18;
-
+        return this.carrito().reduce((total, item) => {
+            const importe = this.getItemTotal(item);
+            return total + (item.producto.tipoAfectacionIgv === '10' ? importe / 1.18 : importe);
+        }, 0);
     });
 
 
     igvVenta = computed(() => {
-
-        return this.totalVenta() -
-            this.subtotalVenta();
-
+        return this.totalVenta() - this.subtotalVenta();
     });
 
 
@@ -555,10 +554,42 @@ export class PosComponent {
     pagosAgregados = signal<import('../../core/models').PagoRequest[]>([]);
     metodoPagoSeleccionado = signal('EFECTIVO');
     montoPagoInput = signal<number>(0);
+    referenciaPagoInput = signal('');
+    referenciaReceta = signal('');
+    recetasDisponibles = signal<RecetaDTO[]>([]);
+    idRecetaSeleccionada = signal<number | null>(null);
+    private idempotencyVenta = '';
+
+    requiereReceta = computed(() =>
+        this.carrito().some(item => item.producto.requiereReceta)
+    );
+
+    recetasCompatibles = computed(() => {
+        const requeridos = this.carrito().filter(item => item.producto.requiereReceta);
+        return this.recetasDisponibles().filter(receta => receta.estado === 'DISPONIBLE'
+            && requeridos.every(item => receta.detalles.some(detalle =>
+                detalle.idProducto === item.producto.idProducto && detalle.cantidadDisponible >= item.cantidad)));
+    });
 
     saldoRestante = computed(() => {
-        const totalPagado = this.pagosAgregados().reduce((sum, p) => sum + p.monto, 0);
-        return Number((this.totalVenta() - totalPagado).toFixed(2));
+        let saldo = this.totalVenta();
+        for (const pago of this.pagosAgregados()) {
+            saldo -= Math.min(pago.montoRecibido, saldo);
+        }
+        return Number(Math.max(0, saldo).toFixed(2));
+    });
+
+    vueltoTotal = computed(() => {
+        let saldo = this.totalVenta();
+        let vuelto = 0;
+        for (const pago of this.pagosAgregados()) {
+            const aplicado = Math.min(pago.montoRecibido, saldo);
+            if (pago.metodoPago === 'EFECTIVO') {
+                vuelto += pago.montoRecibido - aplicado;
+            }
+            saldo -= aplicado;
+        }
+        return Number(vuelto.toFixed(2));
     });
 
     abrirModalPago() {
@@ -569,6 +600,15 @@ export class PosComponent {
         this.pagosAgregados.set([]);
         this.metodoPagoSeleccionado.set('EFECTIVO');
         this.montoPagoInput.set(this.totalVenta());
+        this.referenciaPagoInput.set('');
+        this.idempotencyVenta = crypto.randomUUID();
+        this.idRecetaSeleccionada.set(null);
+        if (this.requiereReceta()) {
+            this.ventasService.listarRecetas().subscribe({
+                next: recetas => this.recetasDisponibles.set(recetas),
+                error: () => this.recetasDisponibles.set([])
+            });
+        }
         this.mostrarModalPago.set(true);
     }
 
@@ -582,12 +622,23 @@ export class PosComponent {
             this.alertService.warning('Monto invlido', 'Debe ser mayor a 0');
             return;
         }
-        if (monto > this.saldoRestante()) {
-            this.alertService.warning('Monto excedido', 'El pago supera el saldo restante.');
+        const metodo = this.metodoPagoSeleccionado();
+        const referencia = this.referenciaPagoInput().trim();
+        if (metodo !== 'EFECTIVO' && !referencia) {
+            this.alertService.warning('Referencia requerida', 'Ingresa el número de operación o autorización.');
             return;
         }
-        this.pagosAgregados.update(pagos => [...pagos, { metodoPago: this.metodoPagoSeleccionado(), monto: monto }]);
+        if (metodo !== 'EFECTIVO' && monto > this.saldoRestante()) {
+            this.alertService.warning('Monto excedido', 'Un pago no efectivo no puede superar el saldo restante.');
+            return;
+        }
+        this.pagosAgregados.update(pagos => [...pagos, {
+            metodoPago: metodo,
+            montoRecibido: monto,
+            referencia: referencia || undefined
+        }]);
         this.montoPagoInput.set(this.saldoRestante());
+        this.referenciaPagoInput.set('');
     }
 
     removerPago(index: number) {
@@ -601,6 +652,11 @@ export class PosComponent {
         }
         if (this.saldoRestante() > 0) {
             this.alertService.warning('Pago incompleto', 'Debe agregar los pagos hasta cubrir el total.');
+            return;
+        }
+
+        if (this.requiereReceta() && !this.idRecetaSeleccionada()) {
+            this.alertService.warning('Receta requerida', 'Selecciona una receta vigente con saldo suficiente.');
             return;
         }
 
@@ -655,8 +711,11 @@ export class PosComponent {
 
 
         const request: VentaRequest = {
-            idCliente: cliente?.idCliente ?? 1,
+            idCliente: cliente?.idCliente,
             tipoComprobante,
+            idempotencyKey: this.idempotencyVenta || crypto.randomUUID(),
+            referenciaReceta: this.referenciaReceta().trim() || undefined,
+            idReceta: this.idRecetaSeleccionada() || undefined,
             pagos: this.pagosAgregados(),
             items: this.carrito().map(item => ({ idProducto: item.producto.idProducto, cantidad: item.cantidad }))
         };
@@ -693,7 +752,11 @@ export class PosComponent {
 
                         tipoComprobante,
 
-                        usuario.username
+                        usuario.username,
+
+                        this.subtotalVenta(),
+
+                        this.igvVenta()
 
                     );
 
@@ -795,6 +858,12 @@ export class PosComponent {
         this.terminoBusqueda.set('');
 
         this.mensajeError.set('');
+        this.pagosAgregados.set([]);
+        this.referenciaReceta.set('');
+        this.idRecetaSeleccionada.set(null);
+        this.recetasDisponibles.set([]);
+        this.referenciaPagoInput.set('');
+        this.idempotencyVenta = '';
 
     }
 

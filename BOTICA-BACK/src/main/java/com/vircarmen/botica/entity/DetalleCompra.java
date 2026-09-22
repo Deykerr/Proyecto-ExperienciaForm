@@ -20,11 +20,14 @@ public class DetalleCompra {
     private Producto producto;
 
     @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @JoinColumn(name = "lote_id", nullable = false)
+    @JoinColumn(name = "lote_id")
     private Lote lote;
 
     @Column(nullable = false)
     private Integer cantidad;
+
+    @Column(name = "cantidad_recibida", nullable = false)
+    private Integer cantidadRecibida = 0;
 
     @Column(name = "costo_unitario", precision = 10, scale = 2, nullable = false)
     private BigDecimal costoUnitario;
@@ -43,6 +46,8 @@ public class DetalleCompra {
     public void setLote(Lote lote) { this.lote = lote; }
     public Integer getCantidad() { return cantidad; }
     public void setCantidad(Integer cantidad) { this.cantidad = cantidad; }
+    public Integer getCantidadRecibida() { return cantidadRecibida; }
+    public void setCantidadRecibida(Integer cantidadRecibida) { this.cantidadRecibida = cantidadRecibida; }
     public BigDecimal getCostoUnitario() { return costoUnitario; }
     public void setCostoUnitario(BigDecimal costoUnitario) { this.costoUnitario = costoUnitario; }
     public BigDecimal getSubtotal() { return subtotal; }

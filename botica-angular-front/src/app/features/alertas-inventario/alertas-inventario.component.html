@@ -1,0 +1,150 @@
+<section class="alerts-page">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">Control operativo</span>
+      <h1>Alertas de inventario</h1>
+      <p>Productos que requieren reposición y lotes que necesitan atención antes de su vencimiento.</p>
+    </div>
+    <button type="button" class="refresh-button" (click)="cargar()" [disabled]="cargando()">
+      <span [class.spinning]="cargando()">↻</span>
+      {{ cargando() ? 'Actualizando…' : 'Actualizar' }}
+    </button>
+  </header>
+
+  @if (error()) {
+    <div class="error-banner" role="alert">
+      <span>⚠️ {{ error() }}</span>
+      <button type="button" (click)="cargar()">Reintentar</button>
+    </div>
+  }
+
+  @if (resumen(); as datos) {
+    <div class="summary-grid">
+      <article class="summary-card total">
+        <span class="summary-icon">🔔</span>
+        <div><small>Alertas activas</small><strong>{{ datos.total }}</strong></div>
+      </article>
+      <article class="summary-card critical">
+        <span class="summary-icon">!</span>
+        <div><small>Atención inmediata</small><strong>{{ datos.criticas }}</strong></div>
+      </article>
+      <article class="summary-card exhausted">
+        <span class="summary-icon">∅</span>
+        <div><small>Agotados</small><strong>{{ datos.agotados }}</strong></div>
+      </article>
+      <article class="summary-card stock">
+        <span class="summary-icon">↓</span>
+        <div><small>Stock bajo</small><strong>{{ datos.bajoStock }}</strong></div>
+      </article>
+      <article class="summary-card expired">
+        <span class="summary-icon">×</span>
+        <div><small>Vencidos con stock</small><strong>{{ datos.vencidosConStock }}</strong></div>
+      </article>
+      <article class="summary-card expiring">
+        <span class="summary-icon">◷</span>
+        <div><small>Por vencer</small><strong>{{ datos.proximosAVencer }}</strong></div>
+      </article>
+    </div>
+
+    <div class="filters-card">
+      <label class="search-field">
+        <span>Buscar</span>
+        <input type="search" placeholder="Producto, código o lote" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
+      </label>
+      <label>
+        <span>Tipo</span>
+        <select [ngModel]="filtroTipo()" (ngModelChange)="filtroTipo.set($event)">
+          <option value="TODAS">Todas</option>
+          <option value="AGOTADO">Agotados</option>
+          <option value="STOCK_BAJO">Stock bajo</option>
+          <option value="LOTE_VENCIDO">Lotes vencidos</option>
+          <option value="LOTE_POR_VENCER">Lotes por vencer</option>
+        </select>
+      </label>
+      <label>
+        <span>Prioridad</span>
+        <select [ngModel]="filtroSeveridad()" (ngModelChange)="filtroSeveridad.set($event)">
+          <option value="TODAS">Todas</option>
+          <option value="CRITICA">Crítica</option>
+          <option value="ADVERTENCIA">Advertencia</option>
+        </select>
+      </label>
+      <label>
+        <span>Ventana de vencimiento</span>
+        <select [ngModel]="diasVencimiento()" (ngModelChange)="cambiarDias($event)">
+          @for (dias of opcionesDias; track dias) {
+            <option [ngValue]="dias">Próximos {{ dias }} días</option>
+          }
+        </select>
+      </label>
+      <button type="button" class="clear-button" (click)="limpiarFiltros()">Limpiar filtros</button>
+    </div>
+
+    <div class="list-card">
+      <div class="list-heading">
+        <div>
+          <h2>Situaciones pendientes</h2>
+          <p>{{ alertasFiltradas().length }} de {{ datos.total }} alertas visibles</p>
+        </div>
+        <small>Última actualización: {{ datos.generadoEn | date:'dd/MM/yyyy, HH:mm' }}</small>
+      </div>
+
+      @if (alertasFiltradas().length > 0) {
+        <div class="alerts-list">
+          @for (alerta of alertasFiltradas(); track alerta.idAlerta) {
+            <article class="alert-row" [class.critical-row]="alerta.severidad === 'CRITICA'">
+              <div class="type-icon" [attr.aria-label]="etiquetaTipo(alerta.tipo)">{{ iconoTipo(alerta.tipo) }}</div>
+              <div class="alert-main">
+                <div class="alert-title-line">
+                  <strong>{{ alerta.producto }}</strong>
+                  <span class="type-badge" [class.danger]="alerta.severidad === 'CRITICA'">{{ etiquetaTipo(alerta.tipo) }}</span>
+                </div>
+                <p>{{ alerta.mensaje }}</p>
+                <small>{{ alerta.accionSugerida }}</small>
+              </div>
+
+              @if (esAlertaStock(alerta)) {
+                <div class="alert-metric">
+                  <span>Stock / mínimo</span>
+                  <strong>{{ alerta.stockActual }} / {{ alerta.stockMinimo }}</strong>
+                  <small>Sugerido: +{{ alerta.cantidadSugeridaReposicion }}</small>
+                </div>
+              } @else {
+                <div class="alert-metric">
+                  <span>Lote {{ alerta.codigoLote }}</span>
+                  <strong>{{ alerta.fechaVencimiento | date:'dd/MM/yyyy' }}</strong>
+                  <small>
+                    @if ((alerta.diasParaVencer ?? 0) < 0) {
+                      Venció hace {{ -(alerta.diasParaVencer ?? 0) }} días
+                    } @else if (alerta.diasParaVencer === 0) {
+                      Vence hoy
+                    } @else {
+                      Faltan {{ alerta.diasParaVencer }} días
+                    }
+                  </small>
+                </div>
+              }
+
+              <div class="row-actions">
+                <a routerLink="/dashboard/productos">Ver producto</a>
+                @if (esAlertaStock(alerta)) {
+                  <a class="primary-action" routerLink="/dashboard/compras">Gestionar compra</a>
+                } @else {
+                  <a class="primary-action" routerLink="/dashboard/inventario">Revisar lote</a>
+                }
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <div class="empty-state">
+          <span>✓</span>
+          <h3>{{ datos.total === 0 ? 'Inventario sin alertas activas' : 'No hay coincidencias' }}</h3>
+          <p>{{ datos.total === 0 ? 'Los niveles de stock y vencimientos están dentro de los parámetros consultados.' : 'Prueba cambiando o limpiando los filtros.' }}</p>
+        </div>
+      }
+    </div>
+  } @else if (cargando()) {
+    <div class="loading-state"><span class="spinning">↻</span> Consultando el inventario…</div>
+  }
+</section>
