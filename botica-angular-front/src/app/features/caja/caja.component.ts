@@ -12,12 +12,13 @@ import {
 } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
 
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 
 import { CajaService } from '../../core/services/caja.service';
 import { AuthService } from '../../core/services/auth.service';
 
 import {
+    CajaDetalleDTO,
     CajaSesionDTO
 } from '../../core/models';
 
@@ -27,7 +28,8 @@ import {
     imports: [
         ReactiveFormsModule,
         FormsModule,
-        DatePipe
+        DatePipe,
+        DecimalPipe
     ],
     templateUrl: './caja.component.html',
     styleUrl: './caja.component.scss'
@@ -47,6 +49,12 @@ export class CajaComponent implements OnInit {
     isLoading = signal(true);
 
     mensajeError = signal('');
+
+    historial = signal<CajaSesionDTO[]>([]);
+
+    detalleSeleccionado = signal<CajaDetalleDTO | null>(null);
+
+    cargandoHistorial = signal(false);
 
     // ==========================================
     // FORMULARIO APERTURA
@@ -76,6 +84,13 @@ export class CajaComponent implements OnInit {
         motivo: ['', [Validators.required, Validators.maxLength(255)]]
     });
 
+    formFiltros = this.fb.nonNullable.group({
+        desde: [''],
+        hasta: [''],
+        estado: ['TODAS'],
+        usuario: ['']
+    });
+
     denominaciones = [200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1]
         .map(denominacion => ({ denominacion, cantidad: 0 }));
 
@@ -89,21 +104,15 @@ export class CajaComponent implements OnInit {
 
     ngOnInit(): void {
         this.verificarCajaActiva();
+        this.cargarHistorial();
     }
 
     // ==========================================
     // OBTENER ID DEL USUARIO
     // ==========================================
 
-    private obtenerIdUsuario(): number | null {
-
-        const usuario = this.authService.currentUser();
-
-        if (!usuario || !usuario.idUsuario) {
-            return null;
-        }
-
-        return usuario.idUsuario;
+    get esAdmin(): boolean {
+        return this.authService.currentUser()?.rol === 'ADMIN';
     }
 
     // ==========================================
@@ -154,6 +163,7 @@ export class CajaComponent implements OnInit {
                         montoInicial: 0
                     });
                     this.isLoading.set(false);
+                    this.cargarHistorial();
                 },
                 error: (err) => {
                     console.error('Error al abrir caja:', err);
@@ -206,6 +216,7 @@ export class CajaComponent implements OnInit {
                     this.denominaciones.forEach(item => item.cantidad = 0);
 
                     this.isLoading.set(false);
+                    this.cargarHistorial();
                 },
 
                 error: (err) => {
@@ -239,11 +250,55 @@ export class CajaComponent implements OnInit {
                 this.cajaActiva.set(actualizada);
                 this.formMovimiento.reset({ tipoMovimiento: 'EGRESO', monto: 0, motivo: '' });
                 this.isLoading.set(false);
+                this.cargarHistorial();
             },
             error: err => {
                 this.mensajeError.set(err?.error?.message || 'No se pudo registrar el movimiento.');
                 this.isLoading.set(false);
             }
         });
+    }
+
+    cargarHistorial(): void {
+        const filtros = this.formFiltros.getRawValue();
+        this.cargandoHistorial.set(true);
+        this.cajaService.listarHistorial({
+            desde: filtros.desde || undefined,
+            hasta: filtros.hasta || undefined,
+            estado: filtros.estado === 'TODAS' ? undefined : filtros.estado,
+            usuario: this.esAdmin ? filtros.usuario.trim() || undefined : undefined
+        }).subscribe({
+            next: cajas => {
+                this.historial.set(cajas);
+                this.cargandoHistorial.set(false);
+            },
+            error: err => {
+                this.mensajeError.set(err?.error?.message || 'No se pudo cargar el historial de cajas.');
+                this.cargandoHistorial.set(false);
+            }
+        });
+    }
+
+    limpiarFiltros(): void {
+        this.formFiltros.reset({ desde: '', hasta: '', estado: 'TODAS', usuario: '' });
+        this.cargarHistorial();
+    }
+
+    verDetalle(idCaja: number): void {
+        this.cargandoHistorial.set(true);
+        this.cajaService.obtenerDetalleHistorial(idCaja).subscribe({
+            next: detalle => {
+                this.detalleSeleccionado.set(detalle);
+                this.cargandoHistorial.set(false);
+            },
+            error: err => {
+                this.mensajeError.set(err?.error?.message || 'No se pudo cargar el detalle de la caja.');
+                this.cargandoHistorial.set(false);
+            }
+        });
+    }
+
+    cerrarDetalle(): void {
+        this.detalleSeleccionado.set(null);
     }
 }

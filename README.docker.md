@@ -114,6 +114,47 @@ la base de datos persistente.
   comparan solo efectivo físico: fondo inicial + cobros en efectivo + ingresos -
   egresos. Yape, Plin y tarjeta se muestran separados.
 
+## Consulta rápida de DNI o RUC en el POS
+
+El POS ofrece dos opciones visibles: **Público general** y **DNI / RUC**. La primera
+no consulta servicios externos. La segunda busca primero el documento en PostgreSQL;
+si ya existe, lo selecciona sin consumir créditos. Solo cuando no existe localmente
+consulta JSON.pe y permite confirmar los datos antes de guardarlos. Si JSON.pe está
+deshabilitado, no tiene créditos o no responde, aparece el registro manual dentro del
+mismo POS y la venta no queda bloqueada.
+
+### Activar JSON.pe
+
+1. Crea una cuenta en `https://app.json.pe` y genera un token Bearer.
+2. Copia `.env.example` como `.env` si todavía no existe.
+3. Completa estas variables en `.env` sin subir ese archivo a Git:
+
+```dotenv
+DOCUMENT_LOOKUP_ENABLED=true
+DOCUMENT_LOOKUP_PROVIDER=JSON_PE
+DOCUMENT_LOOKUP_BASE_URL=https://api.json.pe
+JSONPE_TOKEN=PEGA_AQUI_TU_TOKEN_REAL
+DOCUMENT_LOOKUP_TIMEOUT_MS=3000
+```
+
+4. Reconstruye backend y frontend y vuelve a levantar los contenedores:
+
+```bash
+docker compose build backend-api
+docker compose build frontend-angular
+docker compose up -d --wait --wait-timeout 180
+```
+
+JSON.pe recibe `POST /api/dni` con `{"dni":"12345678"}` o `POST /api/ruc` con
+`{"ruc":"20123456789"}`. El token se agrega únicamente en el backend como
+`Authorization: Bearer ...`; nunca se envía a Angular. No hay reintentos automáticos,
+para evitar el consumo duplicado de créditos. Después de confirmar un cliente, las
+consultas posteriores usan la copia local.
+
+El plan y los datos consultados siguen sujetos a los términos de JSON.pe y a la
+normativa peruana de protección de datos. No uses el DNI guardado para publicidad
+sin la base legal o consentimiento correspondiente.
+
 ## Configuración SUNAT
 
 La integración inicia deshabilitada. Configura primero el entorno BETA y nunca

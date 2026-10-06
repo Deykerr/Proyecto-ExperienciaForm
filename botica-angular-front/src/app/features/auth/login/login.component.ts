@@ -140,7 +140,7 @@ export class LoginComponent {
           } else if (error?.status === 403) {
 
             this.errorMessage.set(
-              'Tu cuenta no tiene permiso para acceder al sistema.'
+              'No se pudo validar la sesión segura. Recarga la página e inténtalo nuevamente.'
             );
 
           } else if (error?.status === 0) {

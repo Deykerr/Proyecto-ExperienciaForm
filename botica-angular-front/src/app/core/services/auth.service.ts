@@ -5,6 +5,10 @@ import { Router } from '@angular/router';
 import { AuthRequest, AuthResponse } from '../models';
 import { environment } from '../../../environments/environment';
 
+interface CsrfResponse {
+  token: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private http = inject(HttpClient);
@@ -14,8 +18,13 @@ export class AuthService {
   currentUser = signal<AuthResponse | null>(this.getUserFromStorage());
 
   login(credentials: AuthRequest) {
-    return this.http.get<void>(`${this.apiUrl}/csrf`).pipe(
-      switchMap(() => this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials)),
+    return this.http.get<CsrfResponse>(`${this.apiUrl}/csrf`).pipe(
+      tap(response => sessionStorage.setItem('csrf_token', response.token)),
+      switchMap(response => this.http.post<AuthResponse>(
+        `${this.apiUrl}/login`,
+        credentials,
+        { headers: { 'X-XSRF-TOKEN': response.token } }
+      )),
       tap(response => {
         // Solo se conserva información no sensible. El JWT vive en cookie HttpOnly.
         localStorage.setItem('auth_user', JSON.stringify(response));
@@ -46,6 +55,7 @@ export class AuthService {
   private clearSession() {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
+    sessionStorage.removeItem('csrf_token');
     this.currentUser.set(null);
     this.router.navigate(['/login']);
   }

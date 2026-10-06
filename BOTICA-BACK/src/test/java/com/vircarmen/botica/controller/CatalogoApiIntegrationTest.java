@@ -59,6 +59,19 @@ class CatalogoApiIntegrationTest {
     }
 
     @Test
+    void destacadosDeberianMostrarProductosActivosConStockSinBusqueda() throws Exception {
+        mockMvc.perform(get("/api/productos/destacados")
+                        .param("limite", "6")
+                        .with(user("cajero").roles("CAJERO")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].idProducto").isNumber())
+                .andExpect(jsonPath("$[0].activo").value(true))
+                .andExpect(jsonPath("$[0].stockActual").isNumber())
+                .andExpect(jsonPath("$[?(@.nombre == 'Loratadina 10 mg Demo')]").isEmpty());
+    }
+
+    @Test
     void lotesDeberianResponderDtoPlanoSinErrorDeSerializacion() throws Exception {
         mockMvc.perform(get("/api/lotes")
                         .with(user("almacenero").roles("ALMACENERO")))

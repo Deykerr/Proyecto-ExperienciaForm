@@ -35,6 +35,13 @@ public class ProductoController {
         return ResponseEntity.ok(productoService.buscarProductosPorTermino(termino, pageable));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'CAJERO', 'ALMACENERO')")
+    @GetMapping("/destacados")
+    public ResponseEntity<List<ProductoDTO>> listarDestacados(
+            @RequestParam(defaultValue = "8") int limite) {
+        return ResponseEntity.ok(productoService.listarDestacados(limite));
+    }
+
     // El cajero, almacenero y admin necesitan esto para el escáner
     @PreAuthorize("hasAnyRole('ADMIN', 'CAJERO', 'ALMACENERO')")
     @GetMapping("/barras/{codigoBarras}")

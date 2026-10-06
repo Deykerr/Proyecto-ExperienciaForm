@@ -2,7 +2,9 @@ package com.vircarmen.botica.controller;
 
 import com.vircarmen.botica.dto.ClienteDTO;
 import com.vircarmen.botica.dto.ClienteRequest;
+import com.vircarmen.botica.dto.ConsultaDocumentoDTO;
 import com.vircarmen.botica.service.ClienteService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +27,11 @@ public class ClienteController {
         return ResponseEntity.ok(clienteService.listarClientes());
     }
 
+    @GetMapping("/resolver")
+    public ResponseEntity<ConsultaDocumentoDTO> resolverDocumento(@RequestParam String numeroDocumento) {
+        return ResponseEntity.ok(clienteService.resolverDocumento(numeroDocumento));
+    }
+
     @GetMapping("/{numeroDocumento}")
     public ResponseEntity<ClienteDTO> buscarPorDocumento(@PathVariable String numeroDocumento) {
         return ResponseEntity.ok(clienteService.buscarPorDocumento(numeroDocumento));
@@ -38,7 +45,7 @@ public class ClienteController {
     }
 
     @PostMapping
-    public ResponseEntity<ClienteDTO> registrarCliente(@RequestBody ClienteRequest request) {
+    public ResponseEntity<ClienteDTO> registrarCliente(@Valid @RequestBody ClienteRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(clienteService.registrarCliente(request));
     }
     
@@ -47,7 +54,7 @@ public class ClienteController {
     @PutMapping("/{id}")
     public ResponseEntity<ClienteDTO> actualizarCliente(
             @PathVariable Integer id, 
-            @RequestBody ClienteRequest request) {
+            @Valid @RequestBody ClienteRequest request) {
         return ResponseEntity.ok(clienteService.actualizarCliente(id, request));
     }
 }

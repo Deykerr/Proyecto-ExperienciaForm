@@ -2,20 +2,31 @@ package com.vircarmen.botica.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.vircarmen.botica.dto.ArqueoCajaDTO;
 import com.vircarmen.botica.dto.ArqueoAprobacionRequest;
+import com.vircarmen.botica.dto.ArqueoDenominacionDTO;
+import com.vircarmen.botica.dto.CajaDetalleDTO;
 import com.vircarmen.botica.dto.CajaSesionCierreRequest;
 import com.vircarmen.botica.dto.CajaSesionDTO;
 import com.vircarmen.botica.dto.CajaSesionRequest;
+import com.vircarmen.botica.dto.MovimientoCajaDTO;
 import com.vircarmen.botica.dto.MovimientoCajaRequest;
 import com.vircarmen.botica.entity.ArqueoCaja;
 import com.vircarmen.botica.entity.ArqueoDenominacion;
@@ -24,6 +35,7 @@ import com.vircarmen.botica.entity.EstadoArqueo;
 import com.vircarmen.botica.entity.EstadoPago;
 import com.vircarmen.botica.entity.MetodoPago;
 import com.vircarmen.botica.entity.MovimientoCaja;
+import com.vircarmen.botica.entity.Rol;
 import com.vircarmen.botica.entity.TipoMovimientoCaja;
 import com.vircarmen.botica.entity.Usuario;
 import com.vircarmen.botica.exception.BusinessException;
@@ -200,6 +212,69 @@ public class CajaSesionService {
                 .map(this::mapToDTO).orElse(null);
     }
 
+    @Transactional(readOnly = true)
+    public List<CajaSesionDTO> listarHistorial(LocalDate desde, LocalDate hasta,
+            String estado, String usuario) {
+        if (desde != null && hasta != null && desde.isAfter(hasta)) {
+            throw new BusinessException("La fecha inicial no puede ser posterior a la fecha final.");
+        }
+        Usuario actual = usuarioActual();
+        boolean esAdmin = actual.getRol() == Rol.ADMIN;
+        Integer idUsuario = esAdmin ? null : actual.getIdUsuario();
+        String usuarioNormalizado = normalizar(usuario);
+        String usuarioFiltro = esAdmin && usuarioNormalizado != null ? usuarioNormalizado : "";
+        CajaSesion.EstadoCaja estadoFiltro = parseEstado(estado);
+        LocalDateTime fechaDesde = desde == null ? null : desde.atStartOfDay();
+        LocalDateTime fechaHasta = hasta == null ? null : hasta.plusDays(1).atStartOfDay();
+
+        Specification<CajaSesion> filtros = (root, query, cb) -> cb.conjunction();
+        if (idUsuario != null) {
+            filtros = filtros.and((root, query, cb) ->
+                    cb.equal(root.get("usuario").get("idUsuario"), idUsuario));
+        }
+        if (!usuarioFiltro.isEmpty()) {
+            String patron = "%" + usuarioFiltro.toLowerCase(Locale.ROOT) + "%";
+            filtros = filtros.and((root, query, cb) ->
+                    cb.like(cb.lower(root.get("usuario").get("username")), patron));
+        }
+        if (estadoFiltro != null) {
+            filtros = filtros.and((root, query, cb) -> cb.equal(root.get("estado"), estadoFiltro));
+        }
+        if (fechaDesde != null) {
+            filtros = filtros.and((root, query, cb) ->
+                    cb.greaterThanOrEqualTo(root.get("fechaApertura"), fechaDesde));
+        }
+        if (fechaHasta != null) {
+            filtros = filtros.and((root, query, cb) -> cb.lessThan(root.get("fechaApertura"), fechaHasta));
+        }
+
+        return cajaSesionRepository.findAll(filtros,
+                        PageRequest.of(0, 200, Sort.by(Sort.Direction.DESC, "fechaApertura")))
+                .getContent().stream()
+                .map(this::mapToDTO)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public CajaDetalleDTO obtenerDetalleHistorial(Integer idCaja) {
+        CajaSesion caja = cajaSesionRepository.findById(idCaja)
+                .orElseThrow(() -> new NoSuchElementException("Caja no encontrada."));
+        Usuario actual = usuarioActual();
+        if (actual.getRol() != Rol.ADMIN
+                && !caja.getUsuario().getIdUsuario().equals(actual.getIdUsuario())) {
+            throw new AccessDeniedException("No puedes consultar una caja de otro usuario.");
+        }
+
+        ArqueoCajaDTO arqueo = arqueoCajaRepository.findByCajaSesionIdCajaSesion(idCaja)
+                .map(this::mapArqueo)
+                .orElse(null);
+        List<MovimientoCajaDTO> movimientos = movimientoCajaRepository
+                .findByCajaSesionIdCajaSesionOrderByFechaAsc(idCaja).stream()
+                .map(this::mapMovimiento)
+                .toList();
+        return new CajaDetalleDTO(mapToDTO(caja), arqueo, movimientos);
+    }
+
     private BigDecimal calcularDenominaciones(List<CajaSesionCierreRequest.Denominacion> items) {
         if (items == null || items.isEmpty()) return null;
         Set<BigDecimal> usadas = new HashSet<>();
@@ -220,9 +295,29 @@ public class CajaSesionService {
     private CajaSesionDTO mapToDTO(CajaSesion caja) {
         Resumen r = calcularResumen(caja);
         return new CajaSesionDTO(caja.getIdCajaSesion(), caja.getUsuario().getUsername(), caja.getFechaApertura(),
-                caja.getFechaCierre(), caja.getMontoInicial(), caja.getMontoFinal(), r.totalIngresosCaja(),
-                r.egresosCaja(), r.saldoEsperado(), r.efectivo(), r.yape(), r.plin(), r.tarjeta(),
+                caja.getFechaCierre(), caja.getMontoInicial(), caja.getMontoFinal(), caja.getMontoEsperado(),
+                caja.getObservacionesCierre(), r.totalIngresosCaja(),
+                r.egresosCaja(), r.ingresosManuales(), r.egresosManuales(), r.reembolsosEfectivo(),
+                r.saldoEsperado(), r.efectivo(), r.yape(), r.plin(), r.tarjeta(),
                 caja.getDiferencia(), caja.getRequiereRevision(), caja.getEstado().name());
+    }
+
+    private MovimientoCajaDTO mapMovimiento(MovimientoCaja movimiento) {
+        return new MovimientoCajaDTO(movimiento.getIdMovimientoCaja(), movimiento.getTipoMovimiento().name(),
+                movimiento.getMonto(), movimiento.getMotivo(), movimiento.getFecha(),
+                movimiento.getUsuario().getUsername(), movimiento.getReferenciaTipo(),
+                movimiento.getReferenciaId());
+    }
+
+    private ArqueoCajaDTO mapArqueo(ArqueoCaja arqueo) {
+        List<ArqueoDenominacionDTO> denominaciones = arqueo.getDenominaciones().stream()
+                .sorted(Comparator.comparing(d -> d.getDenominacion(), Comparator.reverseOrder()))
+                .map(d -> new ArqueoDenominacionDTO(d.getDenominacion(), d.getCantidad(), d.getSubtotal()))
+                .toList();
+        return new ArqueoCajaDTO(arqueo.getIdArqueo(), arqueo.getTotalContado(), arqueo.getSaldoEsperado(),
+                arqueo.getDiferencia(), arqueo.getEstado().name(), arqueo.getObservaciones(), arqueo.getFecha(),
+                arqueo.getAprobadoPor() == null ? null : arqueo.getAprobadoPor().getUsername(),
+                arqueo.getFechaAprobacion(), arqueo.getObservacionAprobacion(), denominaciones);
     }
 
     private Resumen calcularResumen(CajaSesion caja) {
@@ -236,10 +331,22 @@ public class CajaSesionService {
         BigDecimal egresos = caja.getMovimientos().stream()
                 .filter(m -> m.getTipoMovimiento() == TipoMovimientoCaja.EGRESO)
                 .map(MovimientoCaja::getMonto).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal ingresosManuales = movimientos(caja, TipoMovimientoCaja.INGRESO, "MANUAL");
+        BigDecimal egresosManuales = movimientos(caja, TipoMovimientoCaja.EGRESO, "MANUAL");
+        BigDecimal reembolsosEfectivo = movimientos(caja, TipoMovimientoCaja.EGRESO, "DEVOLUCION_VENTA");
         BigDecimal totalIngresosCaja = efectivo.add(ingresos);
         BigDecimal saldo = caja.getMontoInicial().add(totalIngresosCaja).subtract(egresos)
                 .setScale(2, RoundingMode.HALF_UP);
-        return new Resumen(efectivo, yape, plin, tarjeta, totalIngresosCaja, egresos, saldo);
+        return new Resumen(efectivo, yape, plin, tarjeta, totalIngresosCaja, egresos,
+                ingresosManuales, egresosManuales, reembolsosEfectivo, saldo);
+    }
+
+    private BigDecimal movimientos(CajaSesion caja, TipoMovimientoCaja tipo, String referenciaTipo) {
+        return caja.getMovimientos().stream()
+                .filter(m -> m.getTipoMovimiento() == tipo)
+                .filter(m -> referenciaTipo.equalsIgnoreCase(m.getReferenciaTipo()))
+                .map(MovimientoCaja::getMonto).reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private BigDecimal pagos(CajaSesion caja, MetodoPago metodo) {
@@ -253,6 +360,22 @@ public class CajaSesionService {
         return valor == null || valor.isBlank() ? null : valor.trim();
     }
 
+    private CajaSesion.EstadoCaja parseEstado(String estado) {
+        if (estado == null || estado.isBlank() || "TODAS".equalsIgnoreCase(estado)) return null;
+        try {
+            return CajaSesion.EstadoCaja.valueOf(estado.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException("El estado de caja no es válido.");
+        }
+    }
+
+    private Usuario usuarioActual() {
+        return usuarioRepository.findById(SecurityUtils.getUsuarioAutenticadoId())
+                .orElseThrow(() -> new BusinessException("Usuario no encontrado."));
+    }
+
     private record Resumen(BigDecimal efectivo, BigDecimal yape, BigDecimal plin, BigDecimal tarjeta,
-                           BigDecimal totalIngresosCaja, BigDecimal egresosCaja, BigDecimal saldoEsperado) {}
+                           BigDecimal totalIngresosCaja, BigDecimal egresosCaja, BigDecimal ingresosManuales,
+                           BigDecimal egresosManuales, BigDecimal reembolsosEfectivo,
+                           BigDecimal saldoEsperado) {}
 }

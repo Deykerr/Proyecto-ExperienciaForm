@@ -132,7 +132,7 @@
                     <span class="loading-spinner"></span>
 
                     <p>
-                        Buscando productos...
+                        {{ terminoBusqueda().length >= 2 ? 'Buscando productos...' : 'Cargando sugerencias...' }}
                     </p>
 
                 </div>
@@ -141,18 +141,18 @@
 
 
                 @else if (
-                resultadosBusqueda().length > 0
+                productosVisibles().length > 0
                 ) {
 
                 <div class="results-label">
 
                     <span>
-                        RESULTADOS
+                        {{ terminoBusqueda().length >= 2 ? 'RESULTADOS' : 'MÁS VENDIDOS' }}
                     </span>
 
                     <small>
-                        {{ resultadosBusqueda().length }}
-                        encontrados
+                        {{ productosVisibles().length }}
+                        {{ terminoBusqueda().length >= 2 ? 'encontrados' : 'sugeridos' }}
                     </small>
 
                 </div>
@@ -161,7 +161,7 @@
                 <div class="product-grid">
 
                     @for (
-                    producto of resultadosBusqueda();
+                    producto of productosVisibles();
                     track producto.idProducto
                     ) {
 
@@ -326,12 +326,11 @@
                     </div>
 
                     <h3>
-                        Busca un producto para comenzar
+                        No hay productos disponibles
                     </h3>
 
                     <p>
-                        Escribe al menos dos caracteres
-                        para consultar el catálogo.
+                        Registra stock disponible o escribe al menos dos caracteres para buscar.
                     </p>
 
                 </div>
@@ -407,10 +406,25 @@
 
                 </div>
 
+                <div class="client-mode" role="group" aria-label="Tipo de cliente para la venta">
+                    <button type="button" [class.active]="!identificarCliente()" (click)="usarPublicoGeneral()">
+                        Público general
+                    </button>
+                    <button type="button" [class.active]="identificarCliente()" (click)="activarIdentificacion()">
+                        DNI / RUC
+                    </button>
+                </div>
 
                 @if (
                 !clienteSeleccionado()
                 ) {
+
+                @if (!identificarCliente()) {
+                <div class="public-client">
+                    <strong>Venta rápida sin identificación</strong>
+                    <span>Se emitirá una boleta a público general. Puedes identificar al cliente si lo solicita.</span>
+                </div>
+                } @else {
 
                 <form class="client-search" [formGroup]="clienteForm" (ngSubmit)="buscarCliente()">
 
@@ -438,9 +452,33 @@
 
 
                 <small class="client-hint">
-                    Si no registras un cliente,
-                    se utilizará "Cliente Varios".
+                    La consulta usa primero la base local y después JSON.pe si está habilitado.
                 </small>
+
+                @if (clienteForm.controls.documento.invalid && clienteForm.controls.documento.touched) {
+                <small class="client-error">Ingresa un DNI de 8 dígitos o un RUC de 11 dígitos.</small>
+                }
+
+                @if (registroClienteRapido(); as consulta) {
+                <form class="quick-client" [formGroup]="clienteRapidoForm" (ngSubmit)="registrarClienteRapido()">
+                    <div class="quick-client__status">
+                        <strong>{{ consulta.tipoDocumento }} {{ consulta.numeroDocumento }}</strong>
+                        <span>{{ mensajeCliente() }}</span>
+                    </div>
+                    <input type="text" formControlName="nombreRazonSocial" placeholder="Apellidos y nombres" />
+                    <input type="text" formControlName="direccion" placeholder="Dirección (opcional)" />
+                    <button type="submit" [disabled]="clienteRapidoForm.invalid || buscandoCliente()">
+                        Usar y guardar cliente
+                    </button>
+                    <small>
+                        Los datos se usarán para la venta y el comprobante. No se habilita publicidad automáticamente.
+                    </small>
+                </form>
+                } @else if (mensajeCliente()) {
+                <small class="client-error">{{ mensajeCliente() }}</small>
+                }
+
+                }
 
                 }
 

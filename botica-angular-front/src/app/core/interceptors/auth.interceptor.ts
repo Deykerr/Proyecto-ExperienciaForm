@@ -2,10 +2,13 @@ import { HttpInterceptorFn } from '@angular/common/http';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const metodosSeguros = ['GET', 'HEAD', 'OPTIONS', 'TRACE'];
-  const csrfToken = leerCookie('XSRF-TOKEN');
+  const csrfEnPeticion = req.headers.get('X-XSRF-TOKEN');
+  const csrfToken = csrfEnPeticion
+    ?? sessionStorage.getItem('csrf_token')
+    ?? leerCookie('XSRF-TOKEN');
   let headers = req.headers;
 
-  if (!metodosSeguros.includes(req.method.toUpperCase()) && csrfToken) {
+  if (!metodosSeguros.includes(req.method.toUpperCase()) && csrfToken && !csrfEnPeticion) {
     headers = headers.set('X-XSRF-TOKEN', decodeURIComponent(csrfToken));
   }
 

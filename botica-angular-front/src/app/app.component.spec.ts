@@ -14,16 +14,16 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
-  it(`should have the 'botica_front' title`, () => {
+  it(`should have the current application title`, () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
-    expect(app.title).toEqual('botica_front');
+    expect(app.title).toEqual('botica-angular-front');
   });
 
-  it('should render title', () => {
+  it('should render the application router outlet', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, botica_front');
+    expect(compiled.querySelector('router-outlet')).not.toBeNull();
   });
 });

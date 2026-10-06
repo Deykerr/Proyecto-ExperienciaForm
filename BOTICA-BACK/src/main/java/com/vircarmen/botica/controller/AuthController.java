@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.vircarmen.botica.dto.AuthRequest;
 import com.vircarmen.botica.dto.AuthResponse;
+import com.vircarmen.botica.dto.CsrfResponse;
 import com.vircarmen.botica.service.AuthService;
 import com.vircarmen.botica.service.AuthService.LoginResult;
 
@@ -37,9 +38,8 @@ public class AuthController {
     private long jwtExpiration;
 
     @GetMapping("/csrf")
-    public ResponseEntity<Void> csrf(CsrfToken csrfToken) {
-        csrfToken.getToken();
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<CsrfResponse> csrf(CsrfToken csrfToken) {
+        return ResponseEntity.ok(new CsrfResponse(csrfToken.getToken()));
     }
 
     @PostMapping("/login")

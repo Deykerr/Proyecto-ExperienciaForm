@@ -13,6 +13,8 @@ import {
 import {
   ProductoDTO,
   ClienteDTO,
+  ClienteRequest,
+  ConsultaDocumentoDTO,
   VentaRequest,
   VentaResumenDTO,
   RecetaDTO
@@ -60,6 +62,11 @@ export class VentasService {
       );
   }
 
+  listarProductosDestacados(limite = 8): Observable<ProductoDTO[]> {
+    const params = new HttpParams().set('limite', String(limite));
+    return this.http.get<ProductoDTO[]>(`${this.productosUrl}/destacados`, { params });
+  }
+
 
   // ==========================================
   // BUSCAR CLIENTE
@@ -87,6 +94,15 @@ export class VentasService {
       this.apiUrl,
       venta
     );
+  }
+
+  resolverCliente(numeroDocumento: string): Observable<ConsultaDocumentoDTO> {
+    const params = new HttpParams().set('numeroDocumento', numeroDocumento);
+    return this.http.get<ConsultaDocumentoDTO>(`${this.clientesUrl}/resolver`, { params });
+  }
+
+  registrarClienteRapido(cliente: ClienteRequest): Observable<ClienteDTO> {
+    return this.http.post<ClienteDTO>(this.clientesUrl, cliente);
   }
 
   listarRecetas(): Observable<RecetaDTO[]> {

@@ -1,6 +1,7 @@
 package com.vircarmen.botica.service;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,14 @@ import com.vircarmen.botica.repository.CategoriaRepository;
 import com.vircarmen.botica.repository.ProductoRepository;
 
 import lombok.RequiredArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -65,6 +74,36 @@ public class ProductoService {
     public Page<ProductoDTO> buscarProductosPorTermino(String termino, Pageable pageable) {
         return productoRepository.findByNombreContainingIgnoreCaseOrCodigoBarrasContainingIgnoreCase(termino, termino, pageable)
                 .map(this::mapToDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductoDTO> listarDestacados(int limiteSolicitado) {
+        int limite = Math.max(1, Math.min(limiteSolicitado, 12));
+        LocalDate hoy = LocalDate.now();
+        List<Integer> idsMasVendidos = productoRepository.findIdsMasVendidosDesde(
+                LocalDateTime.now().minusDays(90),
+                hoy,
+                PageRequest.of(0, limite));
+
+        Map<Integer, Producto> productosPorId = productoRepository.findAllById(idsMasVendidos).stream()
+                .collect(Collectors.toMap(Producto::getIdProducto, Function.identity()));
+        LinkedHashMap<Integer, Producto> destacados = new LinkedHashMap<>();
+        idsMasVendidos.forEach(id -> {
+            Producto producto = productosPorId.get(id);
+            if (producto != null) {
+                destacados.put(id, producto);
+            }
+        });
+
+        if (destacados.size() < limite) {
+            productoRepository.findDisponiblesParaVenta(hoy, PageRequest.of(0, limite * 2)).forEach(producto -> {
+                if (destacados.size() < limite) {
+                    destacados.putIfAbsent(producto.getIdProducto(), producto);
+                }
+            });
+        }
+
+        return destacados.values().stream().map(this::mapToDTO).toList();
     }
 
     @Transactional(readOnly = true)

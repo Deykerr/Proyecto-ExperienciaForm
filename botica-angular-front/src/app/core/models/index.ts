@@ -19,8 +19,13 @@ export interface CajaSesionDTO {
   fechaCierre?: string;
   montoInicial: number;
   montoFinal?: number;
+  montoEsperado?: number;
+  observacionesCierre?: string;
   totalIngresos?: number;
   totalEgresos?: number;
+  ingresosManuales?: number;
+  egresosManuales?: number;
+  reembolsosEfectivo?: number;
   saldoCalculado?: number;
   ventasEfectivo?: number;
   ventasYape?: number;
@@ -29,6 +34,43 @@ export interface CajaSesionDTO {
   diferencia?: number;
   requiereRevision?: boolean;
   estado: string;
+}
+
+export interface MovimientoCajaDTO {
+  idMovimiento: number;
+  tipo: 'INGRESO' | 'EGRESO';
+  monto: number;
+  motivo: string;
+  fecha: string;
+  usuario: string;
+  origen?: string;
+  referenciaId?: number;
+}
+
+export interface ArqueoDenominacionDTO {
+  denominacion: number;
+  cantidad: number;
+  subtotal: number;
+}
+
+export interface ArqueoCajaDTO {
+  idArqueo: number;
+  totalContado: number;
+  saldoEsperado: number;
+  diferencia: number;
+  estado: string;
+  observaciones?: string;
+  fecha: string;
+  aprobadoPor?: string;
+  fechaAprobacion?: string;
+  observacionAprobacion?: string;
+  denominaciones: ArqueoDenominacionDTO[];
+}
+
+export interface CajaDetalleDTO {
+  caja: CajaSesionDTO;
+  arqueo?: ArqueoCajaDTO;
+  movimientos: MovimientoCajaDTO[];
 }
 
 export interface CajaSesionRequest {
@@ -187,6 +229,18 @@ export interface PagoRequest {
   metodoPago: string;
   montoRecibido: number;
   referencia?: string;
+}
+
+export interface ConsultaDocumentoDTO {
+  idCliente?: number;
+  tipoDocumento: string;
+  numeroDocumento: string;
+  nombreRazonSocial?: string;
+  direccion?: string;
+  encontrado: boolean;
+  requiereRegistro: boolean;
+  origen: 'LOCAL' | 'EXTERNO' | 'MANUAL';
+  mensaje: string;
 }
 
 export interface VentaRequest {

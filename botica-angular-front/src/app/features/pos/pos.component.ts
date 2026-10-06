@@ -2,7 +2,8 @@ import {
     Component,
     computed,
     inject,
-    signal
+    signal,
+    OnInit
 } from '@angular/core';
 
 import {
@@ -36,6 +37,8 @@ import {
 import {
     ProductoDTO,
     ClienteDTO,
+    ClienteRequest,
+    ConsultaDocumentoDTO,
     VentaRequest
     , RecetaDTO
 } from '../../core/models';
@@ -61,7 +64,7 @@ interface CartItem {
     templateUrl: './pos.component.html',
     styleUrl: './pos.component.scss'
 })
-export class PosComponent {
+export class PosComponent implements OnInit {
 
     private fb = inject(FormBuilder);
 
@@ -87,8 +90,20 @@ export class PosComponent {
     clienteSeleccionado =
         signal<ClienteDTO | null>(null);
 
+    identificarCliente =
+        signal(false);
+
     resultadosBusqueda =
         signal<ProductoDTO[]>([]);
+
+    productosDestacados =
+        signal<ProductoDTO[]>([]);
+
+    productosVisibles = computed(() =>
+        this.terminoBusqueda().length >= 2
+            ? this.resultadosBusqueda()
+            : this.productosDestacados()
+    );
 
     isProcessing =
         signal(false);
@@ -98,6 +113,12 @@ export class PosComponent {
 
     buscandoCliente =
         signal(false);
+
+    registroClienteRapido =
+        signal<ConsultaDocumentoDTO | null>(null);
+
+    mensajeCliente =
+        signal('');
 
     mensajeError =
         signal('');
@@ -169,9 +190,34 @@ export class PosComponent {
 
             documento: [
                 '',
-                Validators.required
+                [Validators.required, Validators.pattern(/^(\d{8}|\d{11})$/)]
             ]
 
+        });
+
+    ngOnInit(): void {
+        this.cargarProductosDestacados();
+    }
+
+    private cargarProductosDestacados(): void {
+        this.buscandoProducto.set(true);
+        this.ventasService.listarProductosDestacados(8).subscribe({
+            next: productos => {
+                this.productosDestacados.set(productos.filter(producto => producto.activo));
+                this.buscandoProducto.set(false);
+            },
+            error: error => {
+                console.error('Error cargando productos destacados:', error);
+                this.productosDestacados.set([]);
+                this.buscandoProducto.set(false);
+            }
+        });
+    }
+
+    clienteRapidoForm =
+        this.fb.nonNullable.group({
+            nombreRazonSocial: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(200)]],
+            direccion: ['', [Validators.maxLength(255)]]
         });
 
 
@@ -470,6 +516,19 @@ export class PosComponent {
     // BUSCAR CLIENTE
     // =====================================================
 
+    activarIdentificacion(): void {
+        this.identificarCliente.set(true);
+    }
+
+    usarPublicoGeneral(): void {
+        this.identificarCliente.set(false);
+        this.clienteSeleccionado.set(null);
+        this.registroClienteRapido.set(null);
+        this.mensajeCliente.set('');
+        this.clienteForm.reset();
+        this.clienteRapidoForm.reset();
+    }
+
     buscarCliente(): void {
 
         const documento =
@@ -491,17 +550,31 @@ export class PosComponent {
         this.buscandoCliente.set(true);
 
         this.clienteSeleccionado.set(null);
+        this.identificarCliente.set(true);
+        this.registroClienteRapido.set(null);
+        this.mensajeCliente.set('');
 
 
         this.ventasService
-            .buscarCliente(documento)
+            .resolverCliente(documento)
             .subscribe({
 
-                next: cliente => {
-
-                    this.clienteSeleccionado.set(
-                        cliente
-                    );
+                next: consulta => {
+                    if (consulta.idCliente && consulta.nombreRazonSocial) {
+                        this.clienteSeleccionado.set({
+                            idCliente: consulta.idCliente,
+                            tipoDocumento: consulta.tipoDocumento,
+                            numeroDocumento: consulta.numeroDocumento,
+                            nombreRazonSocial: consulta.nombreRazonSocial
+                        });
+                    } else {
+                        this.registroClienteRapido.set(consulta);
+                        this.clienteRapidoForm.reset({
+                            nombreRazonSocial: consulta.nombreRazonSocial || '',
+                            direccion: consulta.direccion || ''
+                        });
+                        this.mensajeCliente.set(consulta.mensaje);
+                    }
 
                     this.buscandoCliente.set(false);
 
@@ -515,18 +588,45 @@ export class PosComponent {
                     );
 
                     this.clienteSeleccionado.set(null);
+                    this.registroClienteRapido.set(null);
 
                     this.buscandoCliente.set(false);
 
-                    this.alertService.warning(
-                        'Cliente no encontrado',
-                        'La venta continuará como Cliente Varios.'
-                    );
+                    this.mensajeCliente.set(error?.error?.message || 'No se pudo consultar el documento.');
 
                 }
 
             });
 
+    }
+
+    registrarClienteRapido(): void {
+        const consulta = this.registroClienteRapido();
+        if (!consulta || this.clienteRapidoForm.invalid) {
+            this.clienteRapidoForm.markAllAsTouched();
+            return;
+        }
+
+        const datos = this.clienteRapidoForm.getRawValue();
+        const request: ClienteRequest = {
+            tipoDocumento: consulta.tipoDocumento,
+            numeroDocumento: consulta.numeroDocumento,
+            nombreRazonSocial: datos.nombreRazonSocial.trim(),
+            direccion: datos.direccion.trim()
+        };
+        this.buscandoCliente.set(true);
+        this.ventasService.registrarClienteRapido(request).subscribe({
+            next: cliente => {
+                this.clienteSeleccionado.set(cliente);
+                this.registroClienteRapido.set(null);
+                this.mensajeCliente.set('');
+                this.buscandoCliente.set(false);
+            },
+            error: error => {
+                this.mensajeCliente.set(error?.error?.message || 'No se pudo registrar al cliente.');
+                this.buscandoCliente.set(false);
+            }
+        });
     }
 
 
@@ -537,8 +637,11 @@ export class PosComponent {
     quitarCliente(): void {
 
         this.clienteSeleccionado.set(null);
+        this.registroClienteRapido.set(null);
+        this.mensajeCliente.set('');
 
         this.clienteForm.reset();
+        this.clienteRapidoForm.reset();
 
     }
 
@@ -727,6 +830,8 @@ export class PosComponent {
 
                 next: () => {
 
+                    this.mostrarModalPago.set(false);
+
                     /*
                      * Guardamos una referencia de los
                      * datos antes de limpiar el POS.
@@ -848,17 +953,24 @@ export class PosComponent {
         this.carrito.set([]);
 
         this.clienteSeleccionado.set(null);
+        this.identificarCliente.set(false);
 
         this.resultadosBusqueda.set([]);
 
         this.searchForm.reset();
 
         this.clienteForm.reset();
+        this.clienteRapidoForm.reset();
+        this.registroClienteRapido.set(null);
+        this.mensajeCliente.set('');
 
         this.terminoBusqueda.set('');
 
         this.mensajeError.set('');
+        this.mostrarModalPago.set(false);
         this.pagosAgregados.set([]);
+        this.metodoPagoSeleccionado.set('EFECTIVO');
+        this.montoPagoInput.set(0);
         this.referenciaReceta.set('');
         this.idRecetaSeleccionada.set(null);
         this.recetasDisponibles.set([]);
