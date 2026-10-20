@@ -8,3 +8,10 @@
 # Artefactos temporales generados para presentaciones.
 /.codex-pptx-build/
 /.codex-finalizer/
+/.ppt_build/
+
+# Configuración local y secretos. El archivo de ejemplo sí se versiona.
+/.env
+/.env.local
+/.env.*.local
+!/.env.local.example
